@@ -1,0 +1,140 @@
+# Sanctum release — publishes a versioned, scanned image to GHCR when a
+# vMAJOR.MINOR.PATCH tag is pushed (ADR D-19). The tag is the LAST step of the
+# release process (principle 6): by the time it exists, the CHANGELOG and docs
+# are already committed. A failing gate here means no tag is ever applied to the
+# image (D04-D06: tag must be on main; one build, scanned by digest, then tagged).
+#
+# Users run:  ghcr.io/herbiewalker/sanctum:stable  (every release moves it) or an
+# exact :<version>. There is no :latest, by design. Unraid's Docker tab "check for
+# updates" / "update" / "force update" and `docker compose pull` all follow :stable.
+name: release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: gates (test · guards)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go vet ./...
+      - run: go test -race ./...
+      - run: bash scripts/guards.sh all
+
+  publish:
+    name: build · scan · tag
+    needs: gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # create the GitHub release (the in-app update check reads it)
+      packages: write      # push to GHCR
+      id-token: write      # build provenance attestation
+      attestations: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # full history + tags, for the two checks below
+
+      # D04: a tag is only a release if it points at reviewed history. Anyone
+      # with write access can push a tag from any branch; refuse unless the
+      # tagged commit is already on main.
+      - name: Tag must point at a commit on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME is not on main; refusing to publish"; exit 1
+          fi
+
+      - name: Derive version
+        id: v
+        run: |
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          # D04: only the highest release tag may move :stable, so re-tagging an
+          # old version can never silently downgrade everyone following :stable.
+          highest=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -1)
+          if [ "$highest" = "$GITHUB_REF_NAME" ]; then
+            echo "move_stable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "move_stable=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::$GITHUB_REF_NAME is not the highest tag ($highest); :stable will not move"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # D06: build ONCE. The image is pushed by digest only (no tag), then the
+      # very same digest is guarded and scanned, and only a clean digest gets the
+      # :<version> / :stable tags below. A vulnerable or secret-bearing image
+      # therefore never carries a tag anyone pulls.
+      - name: Build and push (by digest, untagged)
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          build-args: VERSION=${{ steps.v.outputs.version }}
+          provenance: true
+          sbom: true
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: 'Guard: runs as non-root'
+        run: |
+          docker pull "$IMAGE@${{ steps.push.outputs.digest }}"
+          U=$(docker inspect --format '{{.Config.User}}' "$IMAGE@${{ steps.push.outputs.digest }}")
+          if [ -z "$U" ] || [ "$U" = "root" ] || [ "$U" = "0" ]; then
+            echo "::error::image runs as root"; exit 1
+          fi
+
+      # D05: pinned to a commit (v0.36.0), not a moving ref: this job holds
+      # packages:write, contents:write and id-token:write.
+      - name: Trivy — vulnerabilities and secrets (the digest that will be tagged)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ env.IMAGE }}@${{ steps.push.outputs.digest }}
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+          scanners: vuln,secret
+
+      - name: Tag the scanned digest
+        run: |
+          tags="-t $IMAGE:${{ steps.v.outputs.version }}"
+          if [ "${{ steps.v.outputs.move_stable }}" = "true" ]; then tags="$tags -t $IMAGE:stable"; fi
+          docker buildx imagetools create $tags "$IMAGE@${{ steps.push.outputs.digest }}"
+
+      # Provenance attestations need a public repo (or GitHub Enterprise); on a
+      # private repo this step would fail after the tags were already applied.
+      - uses: actions/attest-build-provenance@v2
+        if: ${{ !github.event.repository.private }}
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
+            --title "Sanctum ${GITHUB_REF_NAME}" \
+            --notes "Image: \`${IMAGE}:${{ steps.v.outputs.version }}\` (digest \`${{ steps.push.outputs.digest }}\`). See CHANGELOG.md."
+
+# ⏣ HW ⏣ · code · tools · homelab · ⏣ HW ⏣

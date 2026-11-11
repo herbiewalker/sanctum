@@ -1,0 +1,38 @@
+# ---- secrets & local config (NEVER commit) ----
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.pfx
+secrets/
+
+# ---- real backup data must never enter the repo ----
+# TRYST BK1 containers hold real intimacy data. Belt and braces: any stray
+# export dragged into the working tree is ignored rather than staged.
+*.tryst
+testdata/real/
+# NOTE: anchor with leading slash. `vault/` unanchored matches internal/vault/
+# (the source package) as well as any runtime vault dir — same failure mode as
+# the M0 `sanctum` binary bug.
+/inbox/
+/vault/
+
+# ---- build output ----
+# NOTE: these MUST stay anchored with a leading slash. An unanchored `sanctum`
+# matches the cmd/sanctum/ SOURCE directory too, and silently excludes main.go
+# from the repo — which is exactly what happened in the first commit here.
+/bin/
+/dist/
+/sanctum
+/sanctum.exe
+*.test
+*.out
+coverage.*
+
+# ---- tooling / IDE ----
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

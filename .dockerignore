@@ -1,0 +1,30 @@
+# D07: the build stage does `COPY . .`. Keep everything that is not Go source
+# out of the build context, so local secrets and real user data can never be
+# sent to the Docker daemon or baked into a builder layer/cache (hard
+# constraints 2-4). The shipped image only receives the compiled binary.
+
+# VCS and CI
+.git
+.gitattributes
+.github
+
+# Secrets and real data (also gitignored; this covers the Docker context)
+.env
+.env.*
+!.env.example
+*.tryst
+inbox/
+vault/
+testdata/real/
+**/*.sealed
+**/*.sealed.prev
+**/*.sealed.tmp
+manifest.json
+state.json
+
+# Build output and non-build material
+bin/
+deploy/
+docs/
+scripts/
+*.md

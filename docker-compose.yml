@@ -1,0 +1,135 @@
+# ╭──────────────────────────────────────────────────────────────────╮
+# │  ┌●───●───●───●───●───●───●───●───●───●───●───●───●───●───●───┐  │
+# │  │                                                            │  │
+# │  ●   ██╗  ██╗    ██╗    ██╗                                   ●  │
+# │  │   ██║  ██║    ██║    ██║           herbiewalker            │  │
+# │  │   ███████║    ██║ █╗ ██║──●──●──●──┐                       │  │
+# │  │   ██╔══██║    ██║███╗██║           │                       │  │
+# │  ●   ██║  ██║    ╚███╔███╔╝           ●───⏣  code · tools     ●  │
+# │  │   ╚═╝  ╚═╝     ╚══╝╚══╝                    homelab         │  │
+# │  │                                                            │  │
+# │  └●───●───●───●───●───●───●───●───●───●───●───●───●───●───●───┘  │
+# ╰──────────────────────────────────────────────────────────────────╯
+# Sanctum — Unraid deployment.
+#
+# Copy .env.example to .env and edit the paths. The .env holds PATHS AND PORTS
+# ONLY — never a passphrase, key, or token (hard constraint 3 / ADR D-4). The
+# vault is unlocked by a human through the web UI after every start; there is
+# deliberately no way to supply the key here.
+#
+# Verify before deploying:  docker compose config
+
+services:
+  sanctum:
+    # Sanctum is not published to a registry — we build from source (git
+    # checkout of this repo). Compose Manager and `docker compose up --build`
+    # both use this stanza; a plain `docker compose up` reuses the last-built
+    # image tag if one exists.
+    #
+    # BUILD CONTEXT: defaults to `.` (this compose file's directory). If your
+    # compose file lives somewhere OTHER than the repo root (e.g. Compose
+    # Manager's project dir at /boot/config/plugins/compose.manager/projects/
+    # sanctum/), set SANCTUM_BUILD_CONTEXT in .env to the absolute path of
+    # the cloned repo — see RUNBOOK "Deploy" for the workflow.
+    build:
+      context: ${SANCTUM_BUILD_CONTEXT:-.}
+      args:
+        VERSION: ${SANCTUM_VERSION:-dev}
+    # Published image (ADR D-19). Everyone else just pulls this; update with
+    # `docker compose pull && docker compose up -d` or Unraid's update check.
+    # Building from source still works: `docker compose up -d --build` tags the
+    # local build with this same name.
+    image: ${SANCTUM_IMAGE:-ghcr.io/herbiewalker/sanctum}:${SANCTUM_VERSION:-stable}
+    container_name: sanctum
+    # Unraid Docker tab: icon and the WebUI entry in the right-click menu (works for
+    # Compose Manager stacks; the template sets the same things for template installs).
+    labels:
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/herbiewalker/sanctum/main/deploy/icon.png"
+      net.unraid.docker.webui: "http://[IP]:[PORT:8080]/"
+    restart: unless-stopped
+
+    # --- exposure (ADR D-12: LAN only) ---------------------------------------
+    # Bound to a specific host interface, not 0.0.0.0. Do NOT port-forward this,
+    # and do NOT put it behind an internet-facing reverse proxy. If remote access
+    # is ever needed it is Tailscale/WireGuard.
+    ports:
+      - "${SANCTUM_BIND_IP:-127.0.0.1}:${SANCTUM_PORT:-8080}:8080"
+
+    # --- least privilege (hard constraint 6) ---------------------------------
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    # --- storage -------------------------------------------------------------
+    # inbox is UNTRUSTED INPUT (THREAT_MODEL T6) — anything that can write to
+    # this share can hand Sanctum a hostile file. Read-only to the container:
+    # Sanctum reads and verifies, it never needs to write here.
+    #
+    # vault holds ciphertext only (hard constraint 2): opaque TRYSTBK1 blobs and
+    # the Tink-sealed index. Nothing readable ever lands here.
+    volumes:
+      - ${SANCTUM_INBOX_PATH:?set SANCTUM_INBOX_PATH in .env}:/data/inbox:ro
+      - ${SANCTUM_VAULT_PATH:?set SANCTUM_VAULT_PATH in .env}:/data/vault
+
+    # tmpfs is what keeps decrypted data off the array. The live SQLite index and
+    # any transient decrypt buffer live here and die with the container. It is
+    # also why read_only:true above is survivable.
+    tmpfs:
+      - /tmp:mode=1777,size=${SANCTUM_TMPFS_SIZE:-1g},noexec,nosuid,nodev
+
+    environment:
+      SANCTUM_ADDR: ":8080"
+      SANCTUM_INBOX_DIR: "/data/inbox"
+      SANCTUM_VAULT_DIR: "/data/vault"
+      SANCTUM_TMP_DIR: "/tmp/sanctum"
+      # Notifications (ADR D-20): paste ONE URL (ntfy, Discord, Slack or a webhook).
+      # The URL is a credential: keep it in the stack env, never in git or logs.
+      # Test it:  docker exec sanctum /usr/local/bin/sanctum -notify-test
+      SANCTUM_NOTIFY_URL: "${SANCTUM_NOTIFY_URL:-}"
+      SANCTUM_STALENESS_DAYS: "${SANCTUM_STALENESS_DAYS:-30}"
+      # M5 retention + scheduler cadences (home-lab defaults; override in .env).
+      SANCTUM_RETENTION_KEEP_MIN: "${SANCTUM_RETENTION_KEEP_MIN:-3}"
+      SANCTUM_RETENTION_MAX_AGE_DAYS: "${SANCTUM_RETENTION_MAX_AGE_DAYS:-365}"
+      SANCTUM_VERIFY_EVERY_HOURS: "${SANCTUM_VERIFY_EVERY_HOURS:-168}"
+      SANCTUM_RETENTION_EVERY_HOURS: "${SANCTUM_RETENTION_EVERY_HOURS:-24}"
+      # Opt-in, read-only "is a newer release published?" lookup (ADR D-19).
+      # Off by default: when on, the container makes an outbound HTTPS GET to
+      # api.github.com and sends nothing else. It never downloads or applies.
+      SANCTUM_UPDATE_CHECK: "${SANCTUM_UPDATE_CHECK:-false}"
+      SANCTUM_UPDATE_CHECK_EVERY_HOURS: "${SANCTUM_UPDATE_CHECK_EVERY_HOURS:-24}"
+      SANCTUM_ALERT_EVERY_MINUTES: "${SANCTUM_ALERT_EVERY_MINUTES:-60}"
+      SANCTUM_LOCKED_ALERT_AFTER_HOURS: "${SANCTUM_LOCKED_ALERT_AFTER_HOURS:-24}"
+      SANCTUM_LOCKED_ALERT_DEBOUNCE_HOURS: "${SANCTUM_LOCKED_ALERT_DEBOUNCE_HOURS:-24}"
+      # F01 audit fix: TmpDir must sit on a tmpfs mount at runtime. Never set
+      # this to true in production — it exists so tests and Windows dev boxes
+      # can run without a Linux tmpfs.
+      SANCTUM_ALLOW_NONTMPFS_TMPDIR: "false"
+      TZ: "${TZ:-America/New_York}"
+
+    # --- resource limits (N14: cannot starve the Unraid host) ----------------
+    deploy:
+      resources:
+        limits:
+          memory: ${SANCTUM_MEM_LIMIT:-2G}
+          cpus: "${SANCTUM_CPU_LIMIT:-2.0}"
+
+    # distroless has no shell and no curl, so the healthcheck uses the binary's
+    # own check mode rather than `curl -f`. Wired up in M0's final step.
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/sanctum", "-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # Bounded logs, and they must never contain user data (N15).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ⏣ HW ⏣ · code · tools · homelab · ⏣ HW ⏣

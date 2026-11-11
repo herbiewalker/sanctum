@@ -1,0 +1,25 @@
+{{define "body_login"}}
+{{if .NeedsProvision}}
+<p>No owners exist yet in this vault. Create the first one:</p>
+<form method="post" action="/provision" autocomplete="off">
+  <label for="label">Display label <span class="muted">(kept neutral; per D-10)</span></label>
+  <input id="label" name="label" type="text" required>
+  <label for="username">Login username</label>
+  <input id="username" name="username" type="text" required autocomplete="username">
+  <label for="password">Login passphrase</label>
+  <input id="password" name="password" type="password" required autocomplete="new-password">
+  <label for="password_confirm">Type the login passphrase again</label>
+  <input id="password_confirm" name="password_confirm" type="password" required autocomplete="new-password">
+  <button type="submit" class="primary">Create owner</button>
+</form>
+{{else}}
+<p>The vault is unlocked. Sign in as an owner:</p>
+<form method="post" action="/login" autocomplete="off">
+  <label for="username">Username</label>
+  <input id="username" name="username" type="text" required autofocus autocomplete="username">
+  <label for="password">Passphrase</label>
+  <input id="password" name="password" type="password" required autocomplete="current-password">
+  <button type="submit" class="primary">Sign in</button>
+</form>
+{{end}}
+{{end}}

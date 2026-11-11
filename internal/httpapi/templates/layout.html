@@ -1,0 +1,72 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Sanctum</title>
+<style>
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 2rem; max-width: 40rem; margin-inline: auto; }
+h1, h2 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; }
+h1 { font-size: 1.4rem; }
+h2 { font-size: 1.1rem; }
+main { padding-block: 1rem; }
+form { display: flex; flex-direction: column; gap: 0.75rem; margin-block: 1rem; padding: 1rem;
+       border: 1px solid #8886; border-radius: 6px; }
+label { font-weight: 500; font-size: 0.9rem; }
+input[type=password], input[type=text], input[type=file] { padding: 0.5rem; font: inherit;
+  border: 1px solid #8886; border-radius: 4px; background: transparent; color: inherit; }
+button { padding: 0.5rem 1rem; font: inherit; cursor: pointer; border: 1px solid #8886;
+  border-radius: 4px; background: transparent; color: inherit; }
+button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+.err { padding: 0.6rem 0.8rem; border: 1px solid #dc2626; color: #dc2626; border-radius: 4px;
+       background: #dc26261a; }
+.ok  { padding: 0.6rem 0.8rem; border: 1px solid #16a34a; color: #16a34a; border-radius: 4px;
+       background: #16a34a1a; }
+.warn { padding: 0.6rem 0.8rem; border: 1px solid #d97706; color: #d97706; border-radius: 4px;
+        background: #d977061a; margin-bottom: 0.5rem; }
+.muted { color: #8888; font-size: 0.85rem; }
+table { width: 100%; border-collapse: collapse; margin-block: 1rem; }
+th, td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #8883; text-align: left; font-size: 0.9rem; }
+th { font-weight: 600; }
+code { font: 13px ui-monospace, monospace; padding: 1px 4px; border-radius: 3px; background: #8881; }
+nav { display: flex; gap: 1rem; margin-bottom: 1rem; }
+nav a { color: inherit; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #8883; color: #8888; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<header>
+<h1>🔒 Sanctum</h1>
+{{if .Authed}}
+<nav>
+  <a href="/status">Status</a>
+  <a href="/passwords">Passwords</a>
+  <form method="post" action="/logout" style="display:inline;margin:0;padding:0;border:0;">
+    <button type="submit">Log out</button>
+  </form>
+  <form method="post" action="/lock" style="display:inline;margin:0;padding:0;border:0;">
+    <button type="submit">Lock vault</button>
+  </form>
+</nav>
+{{end}}
+</header>
+<main>
+{{if .Warn}}<div class="warn">{{.Warn}}</div>{{end}}
+{{if .Update}}<div class="ok">Sanctum {{.Update.Latest}} is available{{if .Update.URL}} (<a href="{{.Update.URL}}" rel="noopener noreferrer">release notes</a>){{end}}. Pull the new image and restart; the vault will need unlocking afterwards.</div>{{end}}
+{{if .Flash}}<div class="ok">{{.Flash}}</div>{{end}}
+{{if .Error}}<div class="err">{{.Error}}</div>{{end}}
+{{/* html/template requires literal template names; if-chain rather than a variable dispatch */}}
+{{if eq .Body "body_unlock"}}{{template "body_unlock" .}}
+{{else if eq .Body "body_login"}}{{template "body_login" .}}
+{{else if eq .Body "body_status"}}{{template "body_status" .}}
+{{else if eq .Body "body_passwords"}}{{template "body_passwords" .}}
+{{end}}
+</main>
+<footer>
+Sanctum{{if .Version}} {{.Version}}{{end}} · vault state: <code>{{if .Unlocked}}unlocked{{else}}locked{{end}}</code>
+</footer>
+</body>
+</html>{{end}}

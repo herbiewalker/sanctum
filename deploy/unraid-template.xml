@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!--
+  Unraid template for Sanctum (ADR D-19). The Repository follows the :stable tag,
+  which every release moves, so the Docker tab's "check for updates", "update" and
+  "force update" work like any other container. To stay on one version, replace
+  stable with an exact release such as 0.1.0. There is no latest tag.
+  The GHCR package must be public for Unraid to check it.
+
+  Every update restarts the container, and Sanctum boots LOCKED (the key is never
+  stored): open the web UI and unlock it after each update.
+-->
+<Container version="2">
+  <Name>sanctum</Name>
+  <Repository>ghcr.io/herbiewalker/sanctum:stable</Repository>
+  <Registry>https://github.com/herbiewalker/sanctum/pkgs/container/sanctum</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/herbiewalker/sanctum</Support>
+  <Project>https://github.com/herbiewalker/sanctum</Project>
+  <Overview>A locked-by-default vault that ingests, verifies and keeps encrypted Tryst backups on your server. The key is never stored: after every start you unlock it in the web UI. Keep this on your LAN only; never forward the port to the internet.</Overview>
+  <Category>Backup: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/herbiewalker/sanctum/main/deploy/unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/herbiewalker/sanctum/main/deploy/icon.png</Icon>
+  <ExtraParams>--user 65532:65532 --read-only --cap-drop=ALL --security-opt=no-new-privileges:true --memory=2g --cpus=2 --tmpfs /tmp:rw,mode=1777,size=1g,noexec,nosuid,nodev</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>The vault folder must be writable by uid 65532; the inbox needs read access only. Do not publish the port outside your LAN.</Requires>
+  <Config Name="Web UI port" Target="8080" Default="8250" Mode="tcp" Description="LAN only. Never forward this port to the internet." Type="Port" Display="always" Required="true" Mask="false">8250</Config>
+  <Config Name="Inbox" Target="/data/inbox" Default="/mnt/user/appdata/sanctum/inbox" Mode="ro" Description="Drop folder for incoming .tryst backups (Syncthing, SMB, etc). Read-only to Sanctum; treat as untrusted input." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/sanctum/inbox</Config>
+  <Config Name="Vault" Target="/data/vault" Default="/mnt/user/appdata/sanctum/vault" Mode="rw" Description="Encrypted backups and the sealed index. Only ciphertext is ever written here." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/sanctum/vault</Config>
+  <Config Name="Notification URL" Target="SANCTUM_NOTIFY_URL" Default="" Mode="" Description="Where Sanctum sends alerts (locked too long, stale backup, failed verify). Paste ONE URL: ntfy://host/topic, ntfy+http://lan-host:port/topic, a Discord or Slack webhook, or any webhook. It is a credential, so it is masked. Test: docker exec sanctum /usr/local/bin/sanctum -notify-test" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Stale after (days)" Target="SANCTUM_STALENESS_DAYS" Default="30" Mode="" Description="Alert when an owner's newest backup is older than this." Type="Variable" Display="always" Required="false" Mask="false">30</Config>
+  <Config Name="Check for new releases" Target="SANCTUM_UPDATE_CHECK" Default="false" Mode="" Description="true = once a day ask GitHub's public releases API whether a newer Sanctum exists, and notify. Reports only; GitHub sees your IP. Updating is still done from the Docker tab." Type="Variable" Display="always" Required="false" Mask="false">false</Config>
+  <Config Name="Locked alert after (hours)" Target="SANCTUM_LOCKED_ALERT_AFTER_HOURS" Default="24" Mode="" Description="Alert if the vault stays locked this long. 0 disables." Type="Variable" Display="advanced" Required="false" Mask="false">24</Config>
+  <Config Name="Timezone" Target="TZ" Default="America/New_York" Mode="" Description="Timezone for logs and schedules." Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
+</Container>

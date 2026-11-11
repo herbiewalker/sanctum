@@ -1,0 +1,26 @@
+{{define "body_unlock"}}
+{{if .FirstRun}}
+<p>This is a <strong>new vault</strong>. Choose its passphrase. It lives only in memory for this
+session (ADR D-4), every restart re-locks, and <strong>there is no recovery</strong>: if it is lost, the vault
+cannot be opened again. Save it in your password manager first, then copy and paste it into both
+boxes.</p>
+<form method="post" action="/unlock" autocomplete="off">
+  <label for="passphrase">New vault passphrase</label>
+  <input id="passphrase" name="passphrase" type="password" required autofocus autocomplete="new-password">
+  <label for="passphrase_confirm">Type it again</label>
+  <input id="passphrase_confirm" name="passphrase_confirm" type="password" required autocomplete="new-password">
+  <button type="submit" class="primary">Create vault</button>
+</form>
+<p class="muted">The two entries must match exactly. Nothing is created if they differ.</p>
+{{else}}
+<p>The vault is <strong>locked</strong>. Enter the vault passphrase to unlock — it lives only in
+memory for this session (ADR D-4), and any restart re-locks.</p>
+<form method="post" action="/unlock" autocomplete="off">
+  <label for="passphrase">Vault passphrase</label>
+  <input id="passphrase" name="passphrase" type="password" required autofocus autocomplete="current-password">
+  <button type="submit" class="primary">Unlock</button>
+</form>
+<p class="muted">Wrong passphrases fail cleanly and are rate-limited (N16). Forgetting this
+passphrase means the vault is unrecoverable — the second copy lives in your password manager.</p>
+{{end}}
+{{end}}

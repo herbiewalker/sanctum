@@ -1,0 +1,36 @@
+{{define "body_status"}}
+<h2>Vault status</h2>
+<table>
+  <tr><th>Owner</th><td>{{.Status.OwnerLabel}} <code>({{.Status.OwnerID}})</code></td></tr>
+  <tr><th>Backups</th><td>{{.Status.BackupCount}} · newest {{.Status.NewestAge}} ago</td></tr>
+  <tr><th>Total size</th><td>{{.Status.TotalSizeHuman}}</td></tr>
+  <tr><th>Last verify</th><td>{{.Status.LastVerified}}</td></tr>
+</table>
+
+<h2>Upload a backup</h2>
+<form method="post" action="/upload" enctype="multipart/form-data">
+  <label for="file">Choose a <code>.tryst</code> file</label>
+  <input id="file" name="file" type="file" accept=".tryst" required>
+  <button type="submit" class="primary">Upload &amp; verify</button>
+</form>
+<p class="muted">The file is verified by trial-decrypt against your password set (D-13); a duplicate
+SHA-256 is refused before any KDF work.</p>
+
+<h2>Recent backups</h2>
+{{if not .Status.Backups}}
+<p class="muted">No backups yet. Drop a <code>.tryst</code> file in the inbox share, or upload one above.</p>
+{{else}}
+<table>
+  <tr><th>Date</th><th>Size</th><th>Schema</th><th>SHA prefix</th><th>Restore</th></tr>
+  {{range .Status.Backups}}
+  <tr>
+    <td>{{.When}}</td>
+    <td>{{.SizeHuman}}</td>
+    <td>v{{.TrystSchemaVersion}}</td>
+    <td><code>{{.SHAPrefix}}</code></td>
+    <td><a href="/restore/{{.ID}}">download</a></td>
+  </tr>
+  {{end}}
+</table>
+{{end}}
+{{end}}

@@ -1,0 +1,123 @@
+# ╭──────────────────────────────────────────────────────────────────╮
+# │  ┌●───●───●───●───●───●───●───●───●───●───●───●───●───●───●───┐  │
+# │  │                                                            │  │
+# │  ●   ██╗  ██╗    ██╗    ██╗                                   ●  │
+# │  │   ██║  ██║    ██║    ██║           herbiewalker            │  │
+# │  │   ███████║    ██║ █╗ ██║──●──●──●──┐                       │  │
+# │  │   ██╔══██║    ██║███╗██║           │                       │  │
+# │  ●   ██║  ██║    ╚███╔███╔╝           ●───⏣  code · tools     ●  │
+# │  │   ╚═╝  ╚═╝     ╚══╝╚══╝                    homelab         │  │
+# │  │                                                            │  │
+# │  └●───●───●───●───●───●───●───●───●───●───●───●───●───●───●───┘  │
+# ╰──────────────────────────────────────────────────────────────────╯
+# Sanctum CI — gates from M0, never bolted on later (Phase 2 / principle 1).
+#
+# Two jobs on purpose: `go` is fast and gates every push; `image` gates what
+# actually ships. The constraint guards run via scripts/guards.sh — the same
+# script the Makefile and bootstrap.ps1 call, so a guard cannot pass locally and
+# mean something different here (principle 4).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: build · test · guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then echo "::error::gofmt needed:"; echo "$out"; exit 1; fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build
+        run: CGO_ENABLED=0 go build -trimpath ./...
+
+      # The race detector runs here and not on the Windows dev box (no C
+      # toolchain there) — this job is the only place it actually runs.
+      - name: Test
+        run: go test -race ./...
+
+      - name: Constraint guards
+        run: bash scripts/guards.sh all
+
+      # Phase 3 audit smoke #4: on-demand vulnerability scan of the full
+      # module graph. On this repo govulncheck reports "0 reachable
+      # vulnerabilities" as of 2026-08-23; a hit here means a new CVE
+      # landed in a dependency we call.
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  image:
+    name: image · least-privilege · scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build image
+        run: docker build -t sanctum:ci .
+
+      # Hard constraint 6 / N3. Asserted against the built image rather than
+      # trusted from the base image's default.
+      - name: 'Guard: runs as non-root'
+        run: |
+          U=$(docker inspect --format '{{.Config.User}}' sanctum:ci)
+          if [ -z "$U" ] || [ "$U" = "root" ] || [ "$U" = "0" ]; then
+            echo "::error::image runs as root"; exit 1
+          fi
+          echo "image user: $U"
+
+      # Hard constraint 6 / N4. Also enforced by scripts/guards.sh; repeated
+      # here so the image job fails on its own terms.
+      - name: 'Guard: base images pinned by digest'
+        run: bash scripts/guards.sh digest-pin
+
+      # Hard constraint 6 / N12 / N14: only the intended port, no host network,
+      # resource limits present.
+      - name: 'Guard: compose exposure and limits'
+        run: |
+          cp .env.example .env
+          sed -i 's|^SANCTUM_INBOX_PATH=.*|SANCTUM_INBOX_PATH=/tmp/ci-inbox|' .env
+          sed -i 's|^SANCTUM_VAULT_PATH=.*|SANCTUM_VAULT_PATH=/tmp/ci-vault|' .env
+          sed -i 's|^SANCTUM_NOTIFY_PATH=.*|SANCTUM_NOTIFY_PATH=/tmp/ci-notify|' .env
+          docker compose config -q
+          cfg=$(docker compose config)
+          echo "$cfg" | grep -q 'network_mode: *host' && { echo "::error::host network"; exit 1; }
+          echo "$cfg" | grep -q 'read_only: *true'    || { echo "::error::rootfs not read-only"; exit 1; }
+          echo "$cfg" | grep -q 'memory:'             || { echo "::error::no memory limit"; exit 1; }
+          published=$(echo "$cfg" | grep -c 'published:')
+          if [ "$published" -ne 1 ]; then
+            echo "::error::expected exactly 1 published port, found $published"; exit 1
+          fi
+          rm -f .env
+          echo "compose exposure OK"
+
+      # N2 + N5. Secrets scan matters as much as CVEs here: the image must never
+      # carry key material (hard constraint 3).
+      - name: Trivy — vulnerabilities and secrets
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: sanctum:ci
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+          scanners: vuln,secret
+
+# ⏣ HW ⏣ · code · tools · homelab · ⏣ HW ⏣
