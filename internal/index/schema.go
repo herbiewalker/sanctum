@@ -22,7 +22,7 @@ package index
 
 // CurrentSchemaVersion is the schema version Sanctum writes for a fresh index.
 // A migration harness in migrations.go promotes older indexes forward.
-const CurrentSchemaVersion = 1
+const CurrentSchemaVersion = 2
 
 // schemaV1 is the schema-v1 DDL, executed atomically in one transaction by
 // migrateToV1. Every table shape below is what DATA_MODEL specifies; edits

@@ -1,6 +1,6 @@
 # Sanctum — Data Model
 
-> **Status:** Design intent — **index schema v1, not yet implemented.** Lands in M1/M2. The migration
+> **Status:** Design intent — **index schema v2 (v1 + optional password hint).** Lands in M1/M2. The migration
 > rule below is in force from the first stateful commit (principle 2 / lesson L6), not added later.
 
 Two independent things are versioned here, and conflating them is the classic mistake:
@@ -42,7 +42,8 @@ refuses to hold a backup because it is too new has failed at its one job.
 |-------|------|-------|
 | `id` | TEXT | PK, ULID |
 | `owner_id` | TEXT | FK → `owner.id`, cascade delete |
-| `label` | TEXT | owner-chosen — e.g. `"pre-2026-08"`. Never the passphrase, never a hint |
+| `label` | TEXT | owner-chosen — e.g. `"pre-2026-08"`. Never the passphrase |
+| `hint` | TEXT | optional owner-written memory aid (schema v2, `DEFAULT ''`, max 200 chars). Lives only in the sealed index; shown only to the signed-in owner; never in notifications, logs or the manifest |
 | `passphrase` | BLOB | the Tryst backup password. **Only ever seen in cleartext inside the encrypted index**, which lives on tmpfs while unlocked and is sealed to the array as a Tink blob (D-5) |
 | `added_at` | INTEGER | unix seconds, UTC |
 | `last_used_at` | INTEGER | nullable — updated when this password authenticates a backup |

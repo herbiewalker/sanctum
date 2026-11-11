@@ -15,6 +15,7 @@ package index
 
 import (
 	"bytes"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -430,3 +431,64 @@ func readAll(path string) ([]byte, error) {
 }
 
 // ⏣ HW ⏣ · code · tools · homelab · ⏣ HW ⏣
+
+func TestBackupPassword_HintRoundTrip(t *testing.T) {
+	idx, _ := OpenInMemory()
+	defer idx.Close()
+	seedOwner(t, idx, "OWNER1")
+	if err := idx.AddBackupPassword(BackupPassword{ID: "p1", OwnerID: "OWNER1", Label: "a", Hint: "the old phone", Passphrase: []byte("x"), AddedAt: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := idx.AddBackupPassword(BackupPassword{ID: "p2", OwnerID: "OWNER1", Label: "b", Passphrase: []byte("y"), AddedAt: 2}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := idx.ListBackupPasswords("OWNER1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hints := map[string]string{}
+	for _, p := range got {
+		hints[p.ID] = p.Hint
+	}
+	if hints["p1"] != "the old phone" || hints["p2"] != "" {
+		t.Errorf("hints = %v", hints)
+	}
+}
+
+// A v1 index (no hint column) must migrate forward with its passwords intact.
+func TestMigrateV1ToV2_KeepsPasswords(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "idx.db")
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, _ := db.Begin()
+	if err := migrateToV1(tx); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO owner(id,label,login_username,login_kdf,login_salt,login_iterations,login_hash,created_at) VALUES ('O','o','u','k',x'00',1,x'00',1)`,
+		`INSERT INTO owner_backup_password(id,owner_id,label,passphrase,added_at) VALUES ('p','O','old',x'61',1)`,
+	} {
+		if _, err := db.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	db.Close()
+
+	idx, err := OpenFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer idx.Close()
+	if idx.SchemaVersion() != 2 {
+		t.Fatalf("version = %d", idx.SchemaVersion())
+	}
+	got, err := idx.ListBackupPasswords("O")
+	if err != nil || len(got) != 1 || got[0].Label != "old" || got[0].Hint != "" {
+		t.Fatalf("after migrate: %+v %v", got, err)
+	}
+}

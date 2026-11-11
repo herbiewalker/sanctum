@@ -163,6 +163,7 @@ type BackupPassword struct {
 	ID         string
 	OwnerID    string
 	Label      string
+	Hint       string // optional, owner-written; never shown outside the signed-in UI
 	Passphrase []byte
 	AddedAt    int64
 	LastUsedAt *int64
@@ -172,9 +173,9 @@ type BackupPassword struct {
 // add-only; use DeleteBackupPassword to remove one.
 func (i *Index) AddBackupPassword(p BackupPassword) error {
 	_, err := i.db.Exec(
-		`INSERT INTO owner_backup_password(id, owner_id, label, passphrase, added_at, last_used_at)
-		 VALUES (?,?,?,?,?,?)`,
-		p.ID, p.OwnerID, p.Label, p.Passphrase, p.AddedAt, nullableInt64(p.LastUsedAt),
+		`INSERT INTO owner_backup_password(id, owner_id, label, hint, passphrase, added_at, last_used_at)
+		 VALUES (?,?,?,?,?,?,?)`,
+		p.ID, p.OwnerID, p.Label, p.Hint, p.Passphrase, p.AddedAt, nullableInt64(p.LastUsedAt),
 	)
 	return wrapExec("AddBackupPassword", err)
 }
@@ -183,7 +184,7 @@ func (i *Index) AddBackupPassword(p BackupPassword) error {
 // successful entry comes first. Ingest walks this ordering (F18).
 func (i *Index) ListBackupPasswords(ownerID string) ([]BackupPassword, error) {
 	rows, err := i.db.Query(
-		`SELECT id, owner_id, label, passphrase, added_at, last_used_at
+		`SELECT id, owner_id, label, hint, passphrase, added_at, last_used_at
 		 FROM owner_backup_password
 		 WHERE owner_id = ?
 		 ORDER BY COALESCE(last_used_at, 0) DESC, added_at DESC`,
@@ -197,7 +198,7 @@ func (i *Index) ListBackupPasswords(ownerID string) ([]BackupPassword, error) {
 	for rows.Next() {
 		var p BackupPassword
 		var lastUsed sql.NullInt64
-		if err := rows.Scan(&p.ID, &p.OwnerID, &p.Label, &p.Passphrase, &p.AddedAt, &lastUsed); err != nil {
+		if err := rows.Scan(&p.ID, &p.OwnerID, &p.Label, &p.Hint, &p.Passphrase, &p.AddedAt, &lastUsed); err != nil {
 			return nil, err
 		}
 		if lastUsed.Valid {

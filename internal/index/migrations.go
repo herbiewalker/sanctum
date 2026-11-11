@@ -34,6 +34,7 @@ type migrator struct {
 // schema version. Never rewrite a shipped migrator — add a new one.
 var migrations = []migrator{
 	{toVersion: 1, up: migrateToV1},
+	{toVersion: 2, up: migrateToV2},
 }
 
 // migrateToV1 creates every schema-v1 table in a single transaction. If any
@@ -45,6 +46,18 @@ func migrateToV1(tx *sql.Tx) error {
 	if _, err := tx.Exec(
 		`INSERT OR REPLACE INTO meta(key, value) VALUES ('index_schema_version', '1'),
                                                      ('created_at', strftime('%s','now'))`); err != nil {
+		return fmt.Errorf("stamp meta: %w", err)
+	}
+	return nil
+}
+
+// migrateToV2 adds the optional, owner-written password hint. Additive only:
+// existing rows get an empty hint.
+func migrateToV2(tx *sql.Tx) error {
+	if _, err := tx.Exec(`ALTER TABLE owner_backup_password ADD COLUMN hint TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("add hint column: %w", err)
+	}
+	if _, err := tx.Exec(`INSERT OR REPLACE INTO meta(key, value) VALUES ('index_schema_version', '2')`); err != nil {
 		return fmt.Errorf("stamp meta: %w", err)
 	}
 	return nil

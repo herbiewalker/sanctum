@@ -585,3 +585,18 @@ func TestUpload_OversizeChunkedBodyRejectedWith413_F02(t *testing.T) {
 		t.Fatalf("chunked oversize upload: status = %d, want 413. body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestPasswords_Hint(t *testing.T) {
+	e := newE2E(t)
+	unlock(t, e, "pw")
+	jar := provisionAndLoginJar(t, e)
+	do(t, e, "POST", "/passwords", url.Values{"label": {"one"}, "passphrase": {"s3cretvalue"}, "hint": {"first phone"}}, jar)
+	do(t, e, "POST", "/passwords", url.Values{"label": {"two"}, "passphrase": {"another99"}, "hint": {"it is another99 really"}}, jar)
+	body := do(t, e, "GET", "/passwords", nil, jar).Body.String()
+	if !strings.Contains(body, "first phone") {
+		t.Error("hint not shown")
+	}
+	if strings.Contains(body, "another99") {
+		t.Error("a hint containing the password must be dropped")
+	}
+}

@@ -642,7 +642,7 @@ func (s *Server) handlePasswords(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := make([]passwordRow, 0, len(list))
 	for _, p := range list {
-		row := passwordRow{ID: p.ID, Label: p.Label,
+		row := passwordRow{ID: p.ID, Label: p.Label, Hint: p.Hint,
 			AddedWhen: time.Unix(p.AddedAt, 0).UTC().Format("2006-01-02 15:04 UTC")}
 		if p.LastUsedAt != nil {
 			row.LastUsedWhen = time.Unix(*p.LastUsedAt, 0).UTC().Format("2006-01-02 15:04 UTC")
@@ -656,6 +656,9 @@ func (s *Server) handlePasswords(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// maxHintRunes bounds the optional password hint.
+const maxHintRunes = 200
+
 func (s *Server) handlePasswordAdd(w http.ResponseWriter, r *http.Request) {
 	sess, err := s.requireAuth(w, r)
 	if err != nil {
@@ -667,12 +670,16 @@ func (s *Server) handlePasswordAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	label := strings.TrimSpace(r.PostForm.Get("label"))
 	pass := r.PostForm.Get("passphrase")
+	hint := strings.TrimSpace(r.PostForm.Get("hint"))
+	if hint != "" && (len([]rune(hint)) > maxHintRunes || strings.Contains(hint, pass)) {
+		hint = ""
+	}
 	if label == "" || pass == "" {
 		http.Redirect(w, r, "/passwords", http.StatusSeeOther)
 		return
 	}
 	err = s.vault.Index().AddBackupPassword(index.BackupPassword{
-		ID: makeULID(s.now()), OwnerID: sess.OwnerID, Label: label,
+		ID: makeULID(s.now()), OwnerID: sess.OwnerID, Label: label, Hint: hint,
 		Passphrase: []byte(pass), AddedAt: s.now().Unix(),
 	})
 	if err != nil {
@@ -868,6 +875,7 @@ type backupRow struct {
 type passwordRow struct {
 	ID           string
 	Label        string
+	Hint         string
 	AddedWhen    string
 	LastUsedWhen string
 }
