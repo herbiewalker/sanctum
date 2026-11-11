@@ -23,7 +23,7 @@
 
 ## What it is
 
-Tryst keeps years of private records on one phone, encrypted with a key that never leaves the device,
+[Tryst](https://github.com/herbiewalker/tryst) is a privacy-first Android app that keeps years of private records on one phone, encrypted with a key that never leaves the device,
 and has no cloud backup by design. The only safety net is an exported `.tryst` file, which means the
 net depends on you remembering to make one and remembering where it went. A dead phone and a stale
 export is total data loss.
