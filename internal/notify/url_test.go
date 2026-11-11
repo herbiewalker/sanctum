@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 type captured struct {
@@ -124,9 +125,12 @@ func TestDiscordAndSlackShapes(t *testing.T) {
 			t.Fatal(err)
 		}
 		b, _ := io.ReadAll(req.Body)
-		var m map[string]string
-		if err := json.Unmarshal(b, &m); err != nil || !strings.Contains(m[tc.key], sample.Subject) {
+		var m map[string]any
+		if err := json.Unmarshal(b, &m); err != nil {
 			t.Fatalf("%s: bad body %s (%v)", tc.kind, b, err)
+		}
+		if s, _ := m[tc.key].(string); !strings.Contains(s, sample.Subject) {
+			t.Fatalf("%s: %q missing from body %s", tc.kind, sample.Subject, b)
 		}
 	}
 }
@@ -215,5 +219,36 @@ func TestUpdateKindIsAccepted(t *testing.T) {
 	in := Intent{Severity: SeverityNormal, Kind: KindUpdate, Subject: "update available"}
 	if err := validate(in); err != nil {
 		t.Fatalf("the update check raises this kind: %v", err)
+	}
+}
+
+// D10: a Discord post must not let an owner label like "@everyone" ping the
+// channel, and truncation must not split a multi-byte rune.
+func TestDiscordBlocksMentionsAndTruncatesOnRune(t *testing.T) {
+	n, err := ParseURL("https://discord.com/api/webhooks/1/abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := sample
+	in.Body = "owner @everyone " + strings.Repeat("é", 2000)
+	req, err := n.request(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(req.Body)
+	var m struct {
+		Content string `json:"content"`
+		Allowed struct {
+			Parse *[]string `json:"parse"`
+		} `json:"allowed_mentions"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatalf("body not JSON: %v", err)
+	}
+	if m.Allowed.Parse == nil || len(*m.Allowed.Parse) != 0 {
+		t.Fatalf("allowed_mentions.parse must be an empty list, got %s", b)
+	}
+	if strings.ContainsRune(m.Content, '�') || !utf8.ValidString(m.Content) {
+		t.Fatal("content was cut mid-rune")
 	}
 }

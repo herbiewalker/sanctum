@@ -672,6 +672,17 @@ that carries these changes and a throwaway tag has exercised `release.yml`.** D1
 
 ---
 
+### Resolution addendum (v0.1.1, D10-D15)
+
+| # | Fix | Verified by |
+|---|-----|-------------|
+| D10 | Discord payload now carries `allowed_mentions: {"parse": []}`; `truncate` backs off to a rune boundary. | `TestDiscordBlocksMentionsAndTruncatesOnRune`; existing shape test updated |
+| D11 | `parseSemver` accepts ASCII digits only (no `+`/`-` signs). | `TestParseSemver` extended with `v+1.+2.+3`, `+1.2.3`, `1.-2.3`, `1. 2.3` |
+| D12 | New `envHours`: the two hour-valued alert settings accept 0 (disabled) or one minute to one year, otherwise `Load` returns an error instead of overflowing or truncating to 0. | `TestLoadHoursRange` |
+| D13 | `unraid.env.example` and RUNBOOK say to bind `SANCTUM_BIND_IP` to the server's LAN IP; stale "not published to a registry" text fixed in `docker-compose.yml` and RUNBOOK. | read; `bash -n` n/a (docs only) |
+| D14 | Already documented in RUNBOOK "First unlock" (do first-run setup before the LAN can reach the port); RUNBOOK now also names the bind-IP setting there. | read |
+| D15 (new) | `smoke-live.sh` sampled memory in a background loop that never produced a reading for an upload refused in about 2 ms, so peak memory printed 0 MiB. It now samples synchronously before and after the upload and FAILS if `docker stats` returns nothing. | `bash -n`; memory-parsing awk run against `MiB`/`GiB`/`KiB`/`B` samples; live run is the next smoke on the host |
+
 ## Consolidated go/no-go (all Phase 3 passes)
 
 | Pass | Lens | Verdict |

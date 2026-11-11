@@ -237,8 +237,14 @@ func parseSemver(s string) (semver, bool) {
 		if p == "" || len(p) > 6 {
 			return semver{}, false
 		}
+		// D11: digits only. strconv.Atoi would accept a sign ("+5").
+		for i := 0; i < len(p); i++ {
+			if p[i] < '0' || p[i] > '9' {
+				return semver{}, false
+			}
+		}
 		v, err := strconv.Atoi(p)
-		if err != nil || v < 0 {
+		if err != nil {
 			return semver{}, false
 		}
 		n[i] = v

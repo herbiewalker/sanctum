@@ -21,10 +21,10 @@
 
 services:
   sanctum:
-    # Sanctum is not published to a registry — we build from source (git
-    # checkout of this repo). Compose Manager and `docker compose up --build`
-    # both use this stanza; a plain `docker compose up` reuses the last-built
-    # image tag if one exists.
+    # Published to GHCR (ADR D-19): most people should pull the image below. This
+    # build: stanza is for building from source (a git checkout of this repo);
+    # Compose Manager and `docker compose up --build` both use it, and a plain
+    # `docker compose up` reuses the last-built image tag if one exists.
     #
     # BUILD CONTEXT: defaults to `.` (this compose file's directory). If your
     # compose file lives somewhere OTHER than the repo root (e.g. Compose

@@ -51,4 +51,27 @@ func TestLoadRejectsBadStalenessDays(t *testing.T) {
 	}
 }
 
+// D12: the hour-valued alert settings accept 0 (disabled) or one minute to one
+// year; anything else is refused rather than overflowing or truncating to 0.
+func TestLoadHoursRange(t *testing.T) {
+	for _, v := range []string{"0", "0.5", "24", "8760", "0.02"} {
+		t.Setenv("SANCTUM_LOCKED_ALERT_AFTER_HOURS", v)
+		if _, err := Load(); err != nil {
+			t.Fatalf("Load() rejected SANCTUM_LOCKED_ALERT_AFTER_HOURS=%q: %v", v, err)
+		}
+	}
+	for _, v := range []string{"0.0001", "8761", "1e12", "-1", "banana"} {
+		t.Setenv("SANCTUM_LOCKED_ALERT_AFTER_HOURS", v)
+		if _, err := Load(); err == nil {
+			t.Fatalf("Load() accepted SANCTUM_LOCKED_ALERT_AFTER_HOURS=%q; want an error", v)
+		}
+		t.Setenv("SANCTUM_LOCKED_ALERT_AFTER_HOURS", "24")
+		t.Setenv("SANCTUM_LOCKED_ALERT_DEBOUNCE_HOURS", v)
+		if _, err := Load(); err == nil {
+			t.Fatalf("Load() accepted SANCTUM_LOCKED_ALERT_DEBOUNCE_HOURS=%q; want an error", v)
+		}
+		t.Setenv("SANCTUM_LOCKED_ALERT_DEBOUNCE_HOURS", "24")
+	}
+}
+
 // ⏣ HW ⏣ · code · tools · homelab · ⏣ HW ⏣

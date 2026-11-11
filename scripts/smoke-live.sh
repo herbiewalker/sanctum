@@ -119,18 +119,30 @@ BIG="$DIR/big.bin"
 truncate -s "${BIG_MB}M" "$BIG"
 SAMPLES="$DIR/mem.txt"
 : > "$SAMPLES"
-( while true; do docker stats --no-stream --format '{{.MemUsage}}' "$NAME" 2>/dev/null | cut -d/ -f1 >> "$SAMPLES"; sleep 0.5; done ) &
-SAMPLER_PID=$!
+# D15: a refused upload returns in milliseconds, and `docker stats --no-stream`
+# takes about a second, so a background sampler never got a reading and the peak
+# printed as 0. Sample synchronously instead: once before the upload, and once
+# right after it (the refusal is instant, so any buffering would still be resident).
+mem_mib() { # one reading in MiB, empty if docker stats gave nothing
+  docker stats --no-stream --format '{{.MemUsage}}' "$NAME" 2>/dev/null | cut -d/ -f1 |
+    awk '{ v=$1+0; if ($1 ~ /GiB/) v*=1024; else if ($1 ~ /KiB/) v/=1024; else if ($1 ~ /MiB/) v=v; else v/=1048576; printf "%d", v }'
+}
+before="$(mem_mib)"; echo "${before}" >> "$SAMPLES"
 res="$(curl -sS -o /dev/null -b "$JAR" -F "file=@${BIG};filename=big.tryst" --max-time 180 -w '%{http_code} %{time_total}' "$BASE/upload" 2>/dev/null)"
-kill "$SAMPLER_PID" >/dev/null 2>&1; SAMPLER_PID=""
+after="$(mem_mib)"; echo "${after}" >> "$SAMPLES"
 rm -f "$BIG"
 code="${res%% *}"; secs="${res##* }"
-peak="$(awk '{ v=$1+0; if ($1 ~ /GiB/) v*=1024; else if ($1 ~ /KiB/) v/=1024; else if ($1 ~ /MiB/) v=v; else v/=1048576; if (v>m) m=v } END { printf "%d", m }' "$SAMPLES")"
 oom="$(docker inspect "$NAME" --format '{{.State.OOMKilled}}' 2>/dev/null)"
-echo "  http=${code} time=${secs}s peak_memory=${peak}MiB oom_killed=${oom}"
+echo "  http=${code} time=${secs}s memory_before=${before:-?}MiB memory_after=${after:-?}MiB oom_killed=${oom}"
 if [ "$code" = "413" ]; then pass "HTTP 413"; else fail "expected 413, got '${code}'"; fi
 if [ "$oom" = "false" ]; then pass "container was not OOM-killed"; else fail "container OOM-killed"; fi
-if [ "${peak:-0}" -lt 300 ]; then pass "peak memory ${peak} MiB (flat: the oversize body was never read)"; else fail "peak memory ${peak} MiB is too high"; fi
+if [ -z "$before" ] || [ -z "$after" ]; then
+  fail "no memory reading from docker stats; cannot confirm memory stayed flat"
+elif [ "$after" -lt 300 ] && [ "$((after - before))" -lt 100 ]; then
+  pass "memory flat (${before} -> ${after} MiB): the oversize body was never read"
+else
+  fail "memory went ${before} -> ${after} MiB across a refused ${BIG_MB} MB upload"
+fi
 
 # ---------------------------------------------------------------------------
 say "lock the vault so a seal exists on disk, then stop the server"

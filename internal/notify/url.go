@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // URL channels (ADR D-20). One configured URL delivers every intent straight
@@ -125,7 +126,12 @@ func (n *URLNotifier) request(in Intent) (*http.Request, error) {
 	case "ntfy":
 		body, ct = []byte(in.Body), "text/plain; charset=utf-8"
 	case "discord":
-		body, err = json.Marshal(map[string]string{"content": truncate("**"+in.Subject+"**\n"+in.Body, 1900)})
+		// D10: allowed_mentions with an empty parse list stops an owner label such as
+		// "@everyone" from pinging the whole channel.
+		body, err = json.Marshal(map[string]any{
+			"content":          truncate("**"+in.Subject+"**\n"+in.Body, 1900),
+			"allowed_mentions": map[string][]string{"parse": {}},
+		})
 		ct = "application/json"
 	case "slack":
 		body, err = json.Marshal(map[string]string{"text": truncate("*"+in.Subject+"*\n"+in.Body, 3000)})
@@ -193,6 +199,10 @@ func headerSafe(s string) string {
 func truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
+	}
+	// D10: cut on a rune boundary so a multi-byte character is never split.
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
 	}
 	return s[:n]
 }

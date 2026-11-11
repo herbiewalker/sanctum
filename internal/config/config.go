@@ -140,10 +140,10 @@ func Load() (Config, error) {
 	if c.AlertEveryMinutes, err = envInt("SANCTUM_ALERT_EVERY_MINUTES", 60); err != nil {
 		return Config{}, err
 	}
-	if c.LockedAlertAfterHours, err = envFloat("SANCTUM_LOCKED_ALERT_AFTER_HOURS", 24); err != nil {
+	if c.LockedAlertAfterHours, err = envHours("SANCTUM_LOCKED_ALERT_AFTER_HOURS", 24); err != nil {
 		return Config{}, err
 	}
-	if c.LockedAlertDebounceHours, err = envFloat("SANCTUM_LOCKED_ALERT_DEBOUNCE_HOURS", 24); err != nil {
+	if c.LockedAlertDebounceHours, err = envHours("SANCTUM_LOCKED_ALERT_DEBOUNCE_HOURS", 24); err != nil {
 		return Config{}, err
 	}
 	c.UpdateCheck = envBool("SANCTUM_UPDATE_CHECK", false)
@@ -196,6 +196,22 @@ func envFloat(key string, def float64) (float64, error) {
 	f, err := strconv.ParseFloat(v, 64)
 	if err != nil || f < 0 || math.IsNaN(f) || math.IsInf(f, 0) {
 		return 0, fmt.Errorf("%s: %q is not a non-negative number", key, v)
+	}
+	return f, nil
+}
+
+// envHours reads a duration in hours. 0 means "disabled". Any other value must
+// lie between one minute and one year: a tiny positive value would truncate to
+// a zero time.Duration and silently disable the alert, and a huge one overflows
+// time.Duration (D12).
+func envHours(key string, def float64) (float64, error) {
+	f, err := envFloat(key, def)
+	if err != nil {
+		return 0, err
+	}
+	const minHours, maxHours = 1.0 / 60, 24 * 365
+	if f != 0 && (f < minHours || f > maxHours) {
+		return 0, fmt.Errorf("%s: %q must be 0 (disabled) or between 1 minute and 1 year, in hours", key, os.Getenv(key))
 	}
 	return f, nil
 }

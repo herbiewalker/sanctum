@@ -206,7 +206,7 @@ func TestParseSemver(t *testing.T) {
 			t.Fatalf("%q: got %v %v", in, got, ok)
 		}
 	}
-	for _, in := range []string{"", "v1", "1.2", "1.2.3.4", "1.2.x", "-1.0.0", "1.2.3-rc1", "dev"} {
+	for _, in := range []string{"", "v1", "1.2", "1.2.3.4", "1.2.x", "-1.0.0", "1.2.3-rc1", "dev", "v+1.+2.+3", "+1.2.3", "1.-2.3", "1. 2.3"} {
 		if _, ok := parseSemver(in); ok {
 			t.Fatalf("%q should be rejected", in)
 		}

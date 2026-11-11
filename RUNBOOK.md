@@ -78,9 +78,10 @@ web UI on every start.
 
 ### 3. Build the image and start
 
-**Sanctum is not published to a registry** — we build from source. The compose file's `build:`
-stanza handles this in one shot, but Compose Manager and plain `docker compose` need slightly
-different setups.
+**Most installs should pull the published image** (`ghcr.io/herbiewalker/sanctum:stable`, via the
+Unraid template or `docker compose pull`). The steps below are for building from source: the compose
+file's `build:` stanza handles it in one shot, but Compose Manager and plain `docker compose` need
+slightly different setups.
 
 #### 3A. Compose Manager (recommended, matches your Immich workflow)
 
@@ -182,7 +183,7 @@ Files piling up in `pending/` mean the script isn't running; `failed/` suffixes 
 
 1. Open `http://<host>:<port>/` in a browser on the LAN. **Do this first-run setup yourself, right
    after the container starts:** on a brand-new vault, whoever reaches the unlock page first chooses
-   the passphrase, then the owner login. Until you have, keep the port off the LAN (bind to `127.0.0.1`
+   the passphrase, then the owner login. Until you have, keep the port off the LAN. For normal use, bind `SANCTUM_BIND_IP` to the server's LAN IP rather than `0.0.0.0` (D13); for setup, use `127.0.0.1`
    or a firewalled interface).
 2. Type the **vault passphrase** you just saved. Wrong attempts are rate-limited (N16: 5-attempt
    burst, 1/minute refill), so a typo won't lock you out but a scanner won't get anywhere either.

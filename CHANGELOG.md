@@ -8,6 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Fixed — audit nits D10 to D15 (v0.1.1 candidate)
+- **Discord alerts can no longer ping the channel (D10):** an owner label like `@everyone` was interpolated
+  into the stale-backup message; the payload now disables mention parsing. Truncation no longer splits a
+  multi-byte character.
+- **Update-check tag parsing is digits-only (D11):** `v+1.+2.+3` is rejected.
+- **Alert-hour settings are range-checked (D12):** `SANCTUM_LOCKED_ALERT_AFTER_HOURS` and
+  `..._DEBOUNCE_HOURS` must be 0 (disabled) or between 1 minute and 1 year; out-of-range values are an
+  error at startup instead of silently disabling the alert or overflowing. **Behaviour change** for anyone
+  who set a value outside that range.
+- **Docs (D13, D14):** bind `SANCTUM_BIND_IP` to the server's LAN IP; stale "not published to a registry"
+  text removed.
+- **`scripts/smoke-live.sh` (D15):** the memory check now takes real readings (before and after the
+  upload) and fails if it cannot; it used to print 0 MiB.
+
 ## [0.1.0] - 2026-11-11
 
 First release: everything below was built before it. Image `ghcr.io/herbiewalker/sanctum:0.1.0` and `:stable`.
