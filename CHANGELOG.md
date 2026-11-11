@@ -8,7 +8,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
-### Fixed — audit nits D10 to D15 (v0.1.1 candidate)
+## [0.1.1] - 2026-11-11
+
+### Fixed — audit nits D10 to D15
 - **Discord alerts can no longer ping the channel (D10):** an owner label like `@everyone` was interpolated
   into the stale-backup message; the payload now disables mention parsing. Truncation no longer splits a
   multi-byte character.
