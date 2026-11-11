@@ -8,7 +8,7 @@
 
 | Tool | Version | Install / where |
 |------|---------|-----------------|
-| Go | **1.26.10** (the `go` directive in `go.mod` is the source of truth; CI reads it via `go-version-file`) | `winget install --id GoLang.Go` |
+| Go | **1.26.11** (the `go` directive in `go.mod` is the source of truth; CI reads it via `go-version-file`) | `winget install --id GoLang.Go` |
 | Git for Windows | any recent | provides the Git Bash the guards need |
 | Docker | only for image work | **not installed on this dev box** — see the gap list below |
 | trivy | CI only | runs in the `image` job; not needed locally |

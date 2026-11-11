@@ -8,6 +8,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [Unreleased]
 
+### Security — Go 1.26.11 (2026-11-11)
+- Go toolchain 1.26.10 -> 1.26.11 (`go.mod`, `SETUP.md`) and the Dockerfile builder image re-pinned by
+  digest, for GO-2026-6859 in `net/http` (found by `govulncheck` in CI; reachable through the update
+  check and the HTTP server).
+
 ### Security — pre-release delta-audit fixes (2026-11-10, `docs/AUDIT.md` Pass 008)
 - **The index is now sealed while unlocked, not only on lock (D01).** A power loss or kill used to lose
   every owner, password and backup row created in the session. The vault now checkpoints every 10 s

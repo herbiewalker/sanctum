@@ -38,7 +38,7 @@ Ignore `docs`, `*.md` and `*_test.go` to see the real surface.
    permissions (least privilege), action pinning, anything an untrusted PR or tag could influence,
    Trivy gate actually blocks, provenance/SBOM/attestation wiring, `:stable` tag movement, no secrets
    in logs.
-5. **Container and Unraid template**: `Dockerfile` (HEALTHCHECK, builder digest pin, Go 1.26.10),
+5. **Container and Unraid template**: `Dockerfile` (HEALTHCHECK, builder digest pin, Go 1.26.11),
    `deploy/unraid-template.xml` (ExtraParams hardening flags, masked fields, `<Icon>` URL),
    `docker-compose.yml` (image default now `ghcr.io/herbiewalker/sanctum:stable`, labels, 2G memory /
    1g tmpfs defaults). Does anything weaken constraint 6 (least privilege) or add exposure?

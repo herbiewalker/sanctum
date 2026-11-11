@@ -1,6 +1,6 @@
 module github.com/herbiewalker/sanctum
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/tink-crypto/tink-go/v2 v2.8.0
