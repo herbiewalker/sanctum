@@ -28,8 +28,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   image is built once, pushed by digest, scanned, then tagged; Trivy is pinned to a commit. Provenance
   attestation is skipped on private repos (not supported there).
 - **`.dockerignore` added (D07)** so local `.env`, `*.tryst`, `inbox/` and `vault/` never enter a build.
-- **`sanctum-update.sh` (D08):** only `vX.Y.Z` tags, `--apply` requires a verifiable signed tag by default,
-  JSON in notifications is escaped. Behaviour change: set `SANCTUM_UPDATE_REQUIRE_SIGNED=0` to opt out.
+- **Removed `deploy/unraid-scripts/sanctum-update.sh` (D08):** the host-side updater is gone. It could build
+  and run fetched code as root-adjacent Docker, duplicated the container's own opt-in update check, and
+  would have needed a release-signing key to be safe. Updates are manual: pull the image, or
+  `git checkout <tag>` and `docker compose up -d --build`.
 
 ### Fixed — oversize uploads were staged twice on the tmpfs (2026-11-09)
 - The first live smoke run (`scripts/smoke-live.sh`) showed a refused 600 MB upload still peaking at
@@ -107,7 +109,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
   const block) that would have failed CI's gofmt gate.
 
 ### Added — host-side updater, for source-build installs (2026-11-05)
-- `deploy/unraid-scripts/sanctum-update.sh`: fetches release tags from GitHub on the host,
+- (Removed before v0.1.0, see the audit entry above.) `deploy/unraid-scripts/sanctum-update.sh`: fetches release tags from GitHub on the host,
   notifies when a newer stable tag exists, and with `--apply` rebuilds with health-gated
   rollback. Fast-forward-only, optional tag-signature check, `--dry-run` and `--status`.
   The container stays offline and gets no docker socket.

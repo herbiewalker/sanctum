@@ -453,8 +453,11 @@ Format: Nygard-style, trimmed. Context → Decision → Alternatives rejected �
   GitHub release. Users update the standard way: `docker compose pull && up -d`, or the Docker tab (install from `deploy/unraid-template.xml`: check, update, force update). Unraid's own
   update check. The container may also do a read-only check of the GitHub releases API and show
   "update available" (opt-in, `SANCTUM_UPDATE_CHECK`); it sends nothing but a User-Agent and
-  never applies anything itself. `deploy/unraid-scripts/sanctum-update.sh` remains for installs
-  that build from source.
+  never applies anything itself. The host-side `sanctum-update.sh` was removed before v0.1.0: it duplicated
+  the in-app check and was the highest-privilege code in the repo. Source-build installs update by hand
+  (`git checkout <tag>`, `docker compose up -d --build`). Nothing updates Sanctum automatically, so there
+  is no release-signing key to hold, rotate or lose; supply-chain assurance is the image's build
+  attestation and digest pinning.
 - **Consequences:** Releases must be tagged, and the tag is the last step. Every restart re-locks
   the vault (D-4), so any update leaves Sanctum locked until a human unlocks it. The repo must go
   through the going-public checklist before other users can pull the package.

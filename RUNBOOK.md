@@ -356,25 +356,18 @@ Unlock via the UI as normal after the container is up.
 vault is locked after the restart; unlock it. Pin `SANCTUM_VERSION=x.y.z` in the env file to
 control when you move.
 
-**Source-build installs.** Install `deploy/unraid-scripts/sanctum-update.sh` as a User Script named
-`sanctum-update`, schedule `0 4 * * *`. By default it only checks GitHub and raises an Unraid
-notification when a newer `vX.Y.Z` tag exists. When you're ready:
+**Source-build installs.** Pull the new tag and rebuild by hand:
 
 ```bash
-bash /boot/config/plugins/user.scripts/scripts/sanctum-update/script --dry-run   # show the plan
-bash /boot/config/plugins/user.scripts/scripts/sanctum-update/script --apply     # deploy it
+cd /mnt/user/appdata/sanctum/repo
+git fetch --tags && git checkout <new-tag>
+docker compose up -d --build
 ```
 
-`--apply` checks out the tag, validates the compose config, rebuilds, waits for the container to
-be healthy, and rolls back to the previous commit if it isn't. **The vault is locked afterwards**;
-unlock it in the UI. **`--apply` refuses a tag whose signature does not verify on the host**
-(`git verify-tag`; `SANCTUM_UPDATE_REQUIRE_SIGNED` defaults to 1). Either put the maintainer's signing
-key in the host keyring, or set `SANCTUM_UPDATE_REQUIRE_SIGNED=0` knowing the tag's author can then run
-code on the host as the script's user. `AUTO_APPLY=1` is refused unless signatures are required. Knobs
-(set in the User Script header): `SANCTUM_UPDATE_AUTO_APPLY=1`, `SANCTUM_ENV_FILE` (default
-`/boot/config/plugins/compose.manager/projects/sanctum/.env`), `SANCTUM_UPDATE_COMPOSE_SOURCE=stack`.
-It needs the dispatcher installed to deliver its notifications. Snapshot `vault/` before an
-apply that the CHANGELOG says touches the index schema.
+The vault is locked afterwards; unlock it in the UI. Read the CHANGELOG first, and snapshot `vault/`
+before an update that touches the index schema. To hear about new releases, set
+`SANCTUM_UPDATE_CHECK=true` (the container's own read-only check, which notifies through your
+`SANCTUM_NOTIFY_URL`). Nothing updates Sanctum automatically, by design (D-19).
 
 **Manual one-command rollback:**
 

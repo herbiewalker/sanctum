@@ -43,9 +43,7 @@ Ignore `docs`, `*.md` and `*_test.go` to see the real surface.
    `docker-compose.yml` (image default now `ghcr.io/herbiewalker/sanctum:stable`, labels, 2G memory /
    1g tmpfs defaults). Does anything weaken constraint 6 (least privilege) or add exposure?
 6. **Host scripts that run as root on Unraid**:
-   - `deploy/unraid-scripts/sanctum-update.sh`: fetches from git and can restart the stack. Highest
-     privilege code in the repo. Check trust of the fetched ref (tag verification, fast-forward only),
-     argument/env handling, quoting, flock, rollback, what an attacker who controls the remote could do.
+   - (`sanctum-update.sh` was removed after Pass 008; updates are manual, see D-19.)
    - `deploy/unraid-scripts/sanctum-notify-dispatch.sh`: parses JSON drop files with jq or sed and calls
      the Unraid `notify` tool. Check command/argument injection from event text into the shell.
    - `scripts/smoke-live.sh`: `rm -rf` guard on a directory name, docker run flags. Dev/ops tool only.
