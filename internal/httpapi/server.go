@@ -176,6 +176,8 @@ func (s *Server) Routes() *http.ServeMux {
 	// Always-available.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /app.js", s.handleAppJS)
+	mux.HandleFunc("GET /logo-96.png", s.handleLogo(logo96))
+	mux.HandleFunc("GET /logo-192.png", s.handleLogo(logo192))
 	mux.HandleFunc("POST /theme", s.handleTheme)
 
 	// The landing page: chooses unlock vs login vs dashboard.
@@ -270,7 +272,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, dat
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	// Only our own small script (progress bar) may run; no external assets, no framing.
 	w.Header().Set("Content-Security-Policy",
-		"default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+		"default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	if err := s.tmpl.ExecuteTemplate(w, "layout", data); err != nil {
 		s.logger.Error("template render", "page", name, "err", err.Error())
 	}

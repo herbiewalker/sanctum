@@ -8,6 +8,12 @@ import (
 //go:embed static/app.js
 var appJS []byte
 
+//go:embed static/logo-96.png
+var logo96 []byte
+
+//go:embed static/logo-192.png
+var logo192 []byte
+
 const themeCookie = "sanctum_theme"
 
 // themeFrom returns the viewer's saved choice: "light", "dark" or "auto".
@@ -61,4 +67,15 @@ func (s *Server) handleAppJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(appJS)
+}
+
+// handleLogo serves the Sanctum logo. It is public and static, so the locked
+// and sign-in pages can show it too.
+func (s *Server) handleLogo(b []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		_, _ = w.Write(b)
+	}
 }

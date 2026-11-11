@@ -7,7 +7,7 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#4f46e5">
 <title>Sanctum</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234f46e5'/%3E%3Cpath d='M8 11V8.5a4 4 0 1 1 8 0V11' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round'/%3E%3Crect x='6.5' y='11' width='11' height='7.5' rx='2' fill='white'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="/logo-96.png">
 <style>
 /* Sanctum UI. One tiny optional script (upload progress) and no external assets: the page works
    offline on a LAN, in any browser, at any width. Newer CSS is always paired
@@ -71,7 +71,7 @@ a:hover { color: var(--accent-hover); }
        gap: 12px 16px; padding: 18px 0 14px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text);
          font-weight: 700; font-size: 1.25rem; letter-spacing: -.01em; }
-.brand svg { width: 34px; height: 34px; flex: none; }
+.brand img { width: 36px; height: 36px; flex: none; display: block; }
 .pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 999px;
         font-size: .8rem; font-weight: 600; border: 1px solid var(--border); background: var(--surface); }
 .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
@@ -256,7 +256,7 @@ progress::-moz-progress-bar { background: var(--accent); border-radius: 999px; }
 <div class="wrap">
 <header class="top">
   <a class="brand" href="/" aria-label="Sanctum home">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent)"/><path d="M8 11V8.5a4 4 0 1 1 8 0V11" fill="none" stroke="var(--accent-text)" stroke-width="1.8" stroke-linecap="round"/><rect x="6.5" y="11" width="11" height="7.5" rx="2" fill="var(--accent-text)"/></svg>
+    <img src="/logo-96.png" srcset="/logo-192.png 2x" width="36" height="36" alt="">
     Sanctum
   </a>
   {{if .Authed}}

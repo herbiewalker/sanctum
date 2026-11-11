@@ -15,6 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 - Light, dark and automatic theme. The default follows the system setting; a footer switch stores the choice in a cookie, no JavaScript needed.
 - Content-Security-Policy now allows scripts and connections only from the same origin (`script-src 'self'; connect-src 'self'`).
 - Optional password hints on the Passwords page (index schema v2, additive: a `hint` column, empty for existing passwords). Stored only inside the sealed index, shown only after sign-in, never in alerts. A hint that contains the password itself is dropped.
+- The header and browser tab now show the real Sanctum logo (the vault door) instead of a placeholder padlock.
 - **New look, same pages.** A clean card layout with a state pill, a tabbed header, stat tiles on the
   Backups page, plain-language copy, empty states and friendlier timestamps (`2026-11-08 14:03 UTC`).
   Jargon such as ADR and requirement numbers is out of the page text.

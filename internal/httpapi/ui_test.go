@@ -113,3 +113,20 @@ func TestAppJSServedAndUploadFormHasProgress(t *testing.T) {
 		}
 	}
 }
+
+func TestLogoServedAndUsedInHeader(t *testing.T) {
+	e := newE2E(t)
+	for _, p := range []string{"/logo-96.png", "/logo-192.png"} {
+		rec := do(t, e, "GET", p, nil, nil)
+		if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/png" || rec.Body.Len() < 1000 {
+			t.Errorf("%s: %d %q", p, rec.Code, rec.Header().Get("Content-Type"))
+		}
+	}
+	html := do(t, e, "GET", "/", nil, nil).Body.String()
+	if !strings.Contains(html, `src="/logo-96.png"`) {
+		t.Error("header does not use the logo")
+	}
+	if csp := do(t, e, "GET", "/", nil, nil).Header().Get("Content-Security-Policy"); !strings.Contains(csp, "img-src 'self'") {
+		t.Errorf("CSP blocks the logo: %q", csp)
+	}
+}
