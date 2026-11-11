@@ -36,7 +36,10 @@ grep -qE "^## \[${VERSION}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}" CHANGELOG.md \
 echo "ok: CHANGELOG has a dated [${VERSION}] heading"
 
 echo "== Gates (lint, test, guards) =="
-make check
+go vet ./...
+fmt_out="$(gofmt -l .)"; [[ -z "$fmt_out" ]] || { echo "gofmt needed:"; echo "$fmt_out"; exit 1; }
+go test ./...
+bash scripts/guards.sh all
 
 echo "== Vulnerabilities =="
 if command -v govulncheck >/dev/null 2>&1; then govulncheck ./...; else
