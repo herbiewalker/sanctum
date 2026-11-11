@@ -1,6 +1,6 @@
 # Sanctum — Runbook
 
-> **Status: LIVE — M6 deploy.** Written to be followed cold by an operator who did not build the
+> **Status: live, v0.1.1.** Written to be followed cold by an operator who did not build the
 > service. If a step here fails to work in practice, that is a runbook bug and lands as a
 > same-commit fix (principle 3 / lesson L14).
 
@@ -19,17 +19,33 @@ on any of your Unraid boxes with the paths pointed appropriately. Prerequisites:
 - **A tmpfs mount** big enough for the largest expected backup + the live SQLite index — 512 MiB
   is fine for a home-lab. The compose file wires this automatically; the F01 startup check
   refuses to boot if it isn't tmpfs (hard constraint 2 backstop).
-- **Three appdata paths** on the host, one for each bind-mount:
+- **Two appdata paths** on the host (three if you use the optional Unraid dashboard bell, see step 4):
   - `inbox/` — where Syncthing/SMB/SAF deliver `.tryst` files. Mounted **read-only** into the
     container.
   - `vault/` — where Sanctum stores its ciphertext blobs and sealed index. Writable.
-  - `notify/` — where Sanctum drops JSON alert intents for the host User Script (D-18). Writable.
-- **Python 3** on the host (Unraid ships it) — the dispatcher User Script needs it to parse
-  intent files.
+  - `notify/` — optional: where Sanctum drops JSON alert intents for the host User Script (D-18). Writable.
 
 ---
 
 ## Deploy (first time on a new host)
+
+### Quick path: the published image
+
+Most people should do this and skip the build steps below.
+
+1. Create the folders and give the vault to the container user:
+   ```bash
+   mkdir -p /mnt/user/appdata/sanctum/{inbox,vault}
+   chown -R 65532:65532 /mnt/user/appdata/sanctum/vault
+   ```
+2. **Unraid:** add the container from [`deploy/unraid-template.xml`](deploy/unraid-template.xml)
+   (repository `ghcr.io/herbiewalker/sanctum:stable`), fill in the paths, port and notification URL, and
+   apply. **Compose:** copy [`.env.example`](.env.example) to `.env`, then
+   `docker compose pull && docker compose up -d`.
+3. Continue at **First unlock** below. Pin an exact version (for example `0.1.1`) instead of `:stable`
+   if you want to choose when to update.
+
+The rest of this section is for building from source and for Compose Manager setups.
 
 ### 1. Clone the repo and set up appdata
 
@@ -188,14 +204,15 @@ Files piling up in `pending/` mean the script isn't running; `failed/` suffixes 
 2. Type the **vault passphrase** you just saved. Wrong attempts are rate-limited (N16: 5-attempt
    burst, 1/minute refill), so a typo won't lock you out but a scanner won't get anywhere either.
 3. On a fresh vault the login page will offer to **provision the first owner**:
-   - `label` — a display name (keep it neutral per D-10 — think "alice", not the real name).
-   - `login_username` — how you'll log in from now on.
-   - `login_password` — a *different* passphrase from the vault-unlock one. This is the
+   - Display name — a display name (keep it neutral per D-10 — think "alice", not the real name).
+   - Login username — how you'll log in from now on.
+   - Login passphrase — a *different* passphrase from the vault-unlock one. This is the
      per-owner credential (D-14).
-4. After provisioning, log in as the owner.
+4. After provisioning, log in as the owner. (On a brand-new vault the first screen is "Create your vault": type the passphrase twice. Nothing is created if the two differ.)
 5. **Add at least one backup password** under Passwords: this is the Tryst-side passphrase your
    `.tryst` files were exported with. Sanctum needs it to open new ingests. You can add more
    later (D-13 — Sanctum keeps a set, so a Tryst password rotation doesn't break ingest).
+   Optionally add a **hint** to each to jog your memory later (never the password itself).
 
 Confirm:
 
@@ -204,6 +221,27 @@ curl http://<host>:<port>/healthz
 # {"status":"ok","state":"unlocked"}
 ```
 
+
+---
+
+## Using the web interface
+
+- **Backups.** Stat tiles show the count, the newest backup and whether it is on time or overdue, the
+  total size on disk, and when the newest was last verified. The table lists each backup with a
+  Download button. The "What do these columns mean?" and "How do I restore a backup?" panels explain
+  the rest.
+- **Upload.** Choosing a file and pressing **Upload and check** shows a progress bar for the transfer,
+  then a moving bar while Sanctum checks that the backup opens (this can take a minute for large files,
+  because each saved password is tried in turn). **Cancel upload** works during the transfer. If your
+  browser blocks scripts the form still works, just without the bar.
+- **Passwords.** Each saved Tryst password has a label and an optional **hint**. Hints are stored only
+  inside the encrypted index, shown only after you sign in, and never sent in alerts. Keep them vague:
+  a hint is not a place for the password or anything that would let a stranger guess it. A hint that
+  contains the password itself is dropped.
+- **Theme.** The footer has Auto, Light and Dark. Auto follows the system setting; the choice is kept
+  in a small cookie on that browser.
+- **Locking.** **Lock vault** seals the index and zeroes the key at once; **Log out** only ends your
+  session.
 ---
 
 ## Post-reboot checklist
@@ -233,7 +271,7 @@ Two paths, both go through the same pipeline (M3):
 - **Inbox drop** — drop the `.tryst` file into your `SANCTUM_INBOX_PATH` (via Syncthing, SMB,
   SAF on the phone). Sanctum's watcher polls every 5 s with a 2 s stability window; when the
   file stops growing, it ingests. Wait ~15 s, then check the UI.
-- **Browser upload** — click **Upload** in the UI. Same pipeline.
+- **Browser upload** — choose the file on the Backups page and press **Upload and check**. Same pipeline; a progress bar shows the transfer and then the check.
 
 A successful ingest appears in the UI status; a rejection appears in Sanctum's log with a
 neutral reason code (never a password, never a filename that leaks content — N15). See the
@@ -339,25 +377,22 @@ Failure modes:
 
 ## Upgrade and rollback
 
-Sanctum's image is built from a git checkout. Upgrades are `git pull` + `docker compose build`.
+Nothing updates Sanctum automatically, by design (D-19). Read the [CHANGELOG](CHANGELOG.md) first, and
+**snapshot `vault/` before any update that touches the index schema** (the changelog says when).
 
-```bash
-cd /mnt/user/appdata/sanctum/repo
-git fetch --tags
-git checkout <version-tag>            # e.g. v0.2.0
-docker compose build
-docker compose up -d
-docker compose logs -f
-```
+**Published-image installs (the normal case).**
 
-Unlock via the UI as normal after the container is up.
+1. Stop the container and copy the vault: `cp -a vault vault.pre-<version>`.
+2. Update: in Unraid use the Docker tab's update check or force update; with Compose run
+   `docker compose pull && docker compose up -d`. Pin `SANCTUM_VERSION=x.y.z` in the env file (or an
+   exact tag in the template) to control when you move.
+3. The vault is locked after the restart. Unlock it, sign in, and confirm your backups are listed and
+   the footer shows the new version.
 
-**Published-image installs (D-19).** Once a release is tagged, update the normal way:
-`docker compose pull && docker compose up -d`, or use Unraid's own container update check. The
-vault is locked after the restart; unlock it. Pin `SANCTUM_VERSION=x.y.z` in the env file to
-control when you move.
+To hear about new releases, set `SANCTUM_UPDATE_CHECK=true`. It is a read-only check that notifies
+through `SANCTUM_NOTIFY_URL`.
 
-**Source-build installs.** Pull the new tag and rebuild by hand:
+**Source-build installs.**
 
 ```bash
 cd /mnt/user/appdata/sanctum/repo
@@ -365,32 +400,16 @@ git fetch --tags && git checkout <new-tag>
 docker compose up -d --build
 ```
 
-The vault is locked afterwards; unlock it in the UI. Read the CHANGELOG first, and snapshot `vault/`
-before an update that touches the index schema. To hear about new releases, set
-`SANCTUM_UPDATE_CHECK=true` (the container's own read-only check, which notifies through your
-`SANCTUM_NOTIFY_URL`). Nothing updates Sanctum automatically, by design (D-19).
+**Rollback.** Stop the container, restore the pre-update `vault/` snapshot, and start the previous
+version (`docker compose` with the old `SANCTUM_VERSION`, or `git checkout <previous-tag>` and
+rebuild). Unlock as normal.
 
-**Manual one-command rollback:**
-
-```bash
-cd /mnt/user/appdata/sanctum/repo
-git checkout <previous-tag>
-docker compose build
-docker compose up -d
-```
-
-**After an upgrade that touched the index schema** (see [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md)
-"Schema / migration rules"):
-
-- Confirm the migration ran: check the `meta` table's `index_schema_version` (via a shell into
-  the container's live SQLite is not currently supported — read the CHANGELOG for the expected
-  new value, then unlock and confirm the UI still renders backups + counts).
-- Take a snapshot of `vault/` BEFORE the upgrade. Rebuild-from-blobs (F12) is the ultimate
-  fallback if a migration goes catastrophically wrong.
-
-**Rolling back an upgrade that touched the schema** requires the pre-upgrade `index.sealed`
-snapshot — the `.prev` file is only one generation back. Snapshot vault/ before every
-schema-touching upgrade.
+**Index schema versions.** The sealed index is upgraded in place when you unlock, with additive
+migrations only. v0.1.1 moved it from schema 1 to 2 (adds the optional password `hint` column; existing
+passwords get an empty hint). The older v0.1.0 should still open a v2 index because the change only
+adds a column, but a snapshot is the only guaranteed way back. The `.prev` file is one seal
+generation, not a snapshot. If a migration ever goes badly wrong, rebuild-from-blobs (F12) is the
+last resort; see [DATA_MODEL.md](docs/DATA_MODEL.md) "Schema / migration rules".
 
 ---
 
@@ -452,9 +471,7 @@ Three distinct errors have three distinct meanings. Read the log carefully.
 - **`ErrKDFBelowProductionFloor`** (F03) — the manifest's KDF params are below Sanctum's
   production floor (Argon2id `t≥3`, `m≥64 MiB`, `p≥1`). This should never happen from normal
   use; a manifest with weak params was hand-edited, or a bug set `TestParams` on a prod vault.
-  Restore the manifest from a backup. If you truly need to unlock with weak params to migrate
-  data out, set `SANCTUM_ALLOW_INSECURE_KDF=true` in the env — **never leave this set in
-  production**.
+  Restore the manifest from a backup of `vault/`. There is no override switch, by design.
 
 ---
 
@@ -466,4 +483,5 @@ Three distinct errors have three distinct meanings. Read the log carefully.
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Power loss or kill while unlocked | The index is sealed to disk every 10 s when it changed, and right after each ingest (D01), so at most the last few seconds of changes are lost; backups themselves are already immutable blobs. | Start the container and unlock as normal. If a backup you uploaded in the last seconds is missing from the list, upload it again. |
-| *(nothing else has fired yet on live hardware)* | | |
+| A large upload looks stuck at "Checking that the backup opens" | Each saved password is tried in turn with a slow key derivation (about 600,000 rounds), so a big file with several saved passwords can take a minute or more. | Wait. If it ends in "no password in your set can open it", add the password the backup was made with and upload again. |
+| Passwords page shows a "Hint" column after an update | v0.1.1 upgraded the sealed index to schema 2 on first unlock. Expected. | Nothing to do. |

@@ -1,5 +1,8 @@
 # Delta-audit brief (pre-v0.1.0)
 
+> **Historical:** written 2026-11-10 for the v0.1.0 review. Line numbers and file references describe that
+> range and are kept as a record; the current state is in [../CHANGELOG.md](../CHANGELOG.md).
+
 Hand-off for a fresh-eyes auditor session. Lens: **delta-audit** (checklist 02, prompt P03).
 Written 2026-11-10. Do not trust the author's claims below; they say where to look, not what to conclude.
 

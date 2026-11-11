@@ -1,6 +1,6 @@
 # Sanctum — Decision Log (ADRs)
 
-> **Status:** Live — D-1…D-17 from the Phase 0 kickoff interview (2026-08-22). Newest at the bottom.
+> **Status:** Live — D-1 to D-22. Newest at the bottom (before the open questions).
 > Never delete an ADR; supersede it with a new one.
 
 Format: Nygard-style, trimmed. Context → Decision → Alternatives rejected → Consequences.
@@ -512,6 +512,37 @@ Format: Nygard-style, trimmed. Context → Decision → Alternatives rejected �
 - **Decision:** A. The public repo starts from one sanitized commit; the previous private history is
   kept in a private archive repo. Sanitizing removed host names, personal paths, a stray credential
   written in prose (rotated, see the pre-flip report) and stale commit SHAs from the docs.
+
+---
+
+## D-22 — Web UI: one same-origin script, theme cookie, optional password hints (2026-11-11)
+
+- **Context:** the first release's pages were functional but sparse and gave no feedback during the
+  minutes a large upload takes to transfer and verify. Users also asked for a modern look, light and
+  dark themes, and a way to remember which Tryst password is which.
+- **Decision:**
+  1. **Responsive redesign** in plain HTML and inline CSS, with built-in help (tooltips and
+     expandable panels) and no external assets.
+  2. **One optional script, `/app.js`**, served from the same origin with no inline script, drives an
+     upload progress bar (transfer, then the verify stage) with a cancel button. The form still works
+     without it. The CSP becomes `default-src 'none'; style-src 'unsafe-inline'; script-src 'self';
+     connect-src 'self'; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors
+     'none'`. A test fails if any template gains another script or an inline handler.
+  3. **Theme** defaults to the system setting. A footer switch posts to `/theme`, which stores
+     `light` or `dark` in an HttpOnly cookie (`auto` clears it); the server renders `data-theme`.
+     No JavaScript and no secret in the cookie.
+  4. **Optional password hint** per saved Tryst password: index schema v2 adds a `hint` column
+     (additive, empty by default). It lives only in the sealed index, is shown only to the signed-in
+     owner, is capped at 200 characters, is dropped if it contains the password, and never appears in
+     notifications, logs or the manifest.
+- **Alternatives rejected:** a framework or bundler (a large dependency surface for little gain);
+  polling a server-side job status endpoint for finer progress stages (more state and surface, kept as a
+  future option); storing the theme in `localStorage` (needs script and flashes the wrong theme);
+  encrypting hints separately (they already sit inside the encrypted index).
+- **Consequences:** the "no script" property of the first release is relaxed to "one audited-by-test
+  same-origin script". A hint is a small leak of information to anyone who can sign in and read the
+  Passwords page, so the UI tells the user to keep it vague. The redesign, the CSP change and hints
+  landed after the audit passes, so they have had no dedicated audit pass (recorded in `AUDIT.md`).
 
 ---
 

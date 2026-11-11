@@ -10,7 +10,7 @@
 |------|---------|-----------------|
 | Go | **1.26.11** (the `go` directive in `go.mod` is the source of truth; CI reads it via `go-version-file`) | `winget install --id GoLang.Go` |
 | Git for Windows | any recent | provides the Git Bash the guards need |
-| Docker | only for image work | **not installed on this dev box** — see the gap list below |
+| Docker | only for image work | not installed on the Windows dev box (see the gap list below); image smoke tests run on the Docker host |
 | trivy | CI only | runs in the `image` job; not needed locally |
 
 ## Environment variables / local config
@@ -63,7 +63,8 @@ On Linux or in CI, `make check` does the same thing.
   terminates the process (exit 143) without running Go's signal handler, so
   **graceful shutdown cannot be verified on Windows** — the shutdown log lines never appear and it
   looks like the handler is broken when it is not. → Verify graceful shutdown in the container with
-  `docker stop` and check for `shutdown complete` in the logs. Tracked as an M0 exit item (N11).
+  `docker stop` and check for `shutdown complete` in the logs. `scripts/smoke-live.sh` does this on the
+  Docker host (N11, verified on a real host).
   This is lesson L19 in miniature: developing Linux-target code on Windows validates syntax, not
   behaviour.
 
@@ -93,13 +94,21 @@ is a lower rung than a real one).
 
 | Gap | Consequence | Where it gets verified instead |
 |-----|-------------|--------------------------------|
-| No Docker | cannot build the image, run `make image-checks`, or validate `docker compose config` locally | CI's `image` job — **green as of 2026-08-22**, so the image is built and asserted on every push |
+| No Docker | cannot build the image, run `make image-checks`, or validate `docker compose config` locally | CI's `image` job, which builds and asserts the image on every push |
 | No `make` | `make` targets are CI/Linux only | CI; `bootstrap.ps1` locally |
 | No C toolchain | no `-race` locally | CI's `go` job |
-| Windows signals | graceful shutdown (N11) unverifiable | `docker stop` on the real box, M0 exit |
-| No real `.tryst` fixture in-repo (by design — hard constraint 4) | crypto interop unproven | M1 exit, against a genuine backup from your own Tryst phone |
+| Windows signals | graceful shutdown (N11) unverifiable locally | `scripts/smoke-live.sh` on the Docker host |
+| No real `.tryst` fixture in-repo (by design, hard constraint 4) | real-file interop is not part of CI | tests generate synthetic backups; interop against genuine backups was proven in M1 and again by the live ingest |
 
 ## IDE / editor
 
 - Open the repo root; the Go module is rooted there.
 - `.editorconfig` handles indentation (tabs for Go, 2-space elsewhere). Let it.
+
+## Releasing
+
+Releases are cut by `scripts/release.sh X.Y.Z` (a dry run; add `--tag` to publish). It runs vet, gofmt,
+the tests, the guards and `govulncheck`, checks CI is green on that exact commit, and only then creates
+and pushes the tag. `.github/workflows/release.yml` gates, builds once by digest, Trivy-scans, tags the
+image, publishes the GitHub release and attests build provenance. The version comes from the tag; there
+is no version file. See [RUNBOOK.md](RUNBOOK.md) for the live-host smoke test and update steps.

@@ -1,7 +1,7 @@
 # Sanctum — Requirements
 
-> **Status:** v1 draft (2026-08-22), from the Phase 0 kickoff. Tracks `CLAUDE.md`'s hard constraints
-> as testable NFRs.
+> **Status:** v1 requirements, all met in v0.1.x. Written at the Phase 0 kickoff (2026-08-22) and kept
+> current. Tracks `CLAUDE.md`'s hard constraints as testable NFRs.
 
 ## Problem & users
 
@@ -69,6 +69,9 @@
 | F17 | Owner can manage the per-backup password set (D-13): add, list labels, delete. Add is the only mutation on an existing entry | Must |
 | F18 | Ingest tries every password in the owner's set and records the winner on the backup row | Must |
 | F19 | Media entries are counted from the ZIP central directory only (D-15); no `media/*` entry is decrypted in v1 | Must |
+| F20 | Owner can attach an optional hint (up to 200 characters) to each saved backup password; stored only in the sealed index, shown only to the signed-in owner, never in alerts or logs (D-22) | Should |
+| F21 | The web UI is usable at any viewport width and in any current browser, follows the system light or dark setting by default, and lets the user choose a theme without JavaScript (D-22) | Should |
+| F22 | Browser uploads show transfer and verify progress, and still work without JavaScript (D-22) | Should |
 
 ## Non-functional requirements
 
@@ -95,3 +98,5 @@
 | N17 | Owner-login sessions do not survive a re-lock: after `LOCKED → UNLOCKED → LOCKED`, previously-issued session cookies must not authenticate anything | Test: unlock → issue cookie → re-lock → attempt to use cookie → expect rejection |
 | N18 | Session cookies are `HttpOnly` + `Secure` + `SameSite=Strict`, and their storage lives on tmpfs | Test: header assertion; guard that the session store path resolves inside the configured tmpfs |
 | N19 | No `media/*` ZIP entry is decrypted in v1 (D-15) | Test: instrument the ZIP reader; a `Read()` on any entry under `media/` fails the test |
+| N20 | The Content-Security-Policy allows only same-origin script, style, image and connect sources, no framing, and same-site form posts; templates contain no script other than `/app.js` and no inline handler (D-22) | Test: `TestUITemplatesAreScriptFreeAndSelfContained`, `TestUISendsStrictCSP` |
+| N20 | The Content-Security-Policy allows only same-origin script, style, image and connect sources, no framing, and same-site form posts; templates contain no script other than `/app.js` and no inline handler | Test: `TestUITemplatesAreScriptFreeAndSelfContained`, `TestUISendsStrictCSP` |

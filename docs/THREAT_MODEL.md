@@ -1,6 +1,6 @@
 # Sanctum — Threat Model
 
-> **Status:** v1 (2026-08-22) — aligned with the Phase 0 design (D-2, D-3, D-4, D-5, D-11, D-12).
+> **Status:** v1, revised 2026-11-11 for v0.1.x (adds R8 to R10 below). Aligned with D-2 to D-5, D-11, D-12 and D-22.
 > Covers the v1 vault scope only. **Partner sharing (D-9) requires a full revision of this document
 > before any of it is built** — a second owner changes every row below.
 >
@@ -97,6 +97,17 @@
   principle 12 — the dispatcher must be test-fired on a real Unraid host before M6 exits (a
   notification path that has never fired is not a notification path). Files pile up in
   `pending/` when the dispatcher stops running, which is an operator-visible signal.
-- **R6 — No independent verification that the trial decrypt matches what Tryst would produce.**
-  D-6 chose a different crypto implementation from the app's. *Mitigated by:* the M1 exit criterion
-  requiring interop against a genuine `.tryst` file — this risk stays open until that test passes.
+- **R6 — CLOSED (2026-08-22).** Interop against genuine `.tryst` files passed (three real backups, up to 34 MB and multi-segment), and a real 419 MB backup was later ingested, restored byte-identical and opened in Tryst.
+- **R8 — Password hints (D-22).** The optional hint is owner-written text stored in the sealed index
+  and shown to anyone signed in as that owner. A careless hint weakens the password. *Mitigated by:*
+  UI guidance to keep it vague, a 200-character cap, silently dropping any hint that contains the
+  password itself, and never putting hints in alerts, logs or the manifest.
+- **R9 — The web UI now serves one script (D-22).** `/app.js` is same-origin and carries no data, and
+  the CSP allows nothing broader (`script-src 'self'`, no inline script). A bug in it, or a way to
+  plant a different file at that path, would run in the signed-in page. *Mitigated by:* the file is
+  embedded in the binary (nothing on disk to tamper with), a test fails if any template adds another
+  script or an inline handler, and every dynamic value is escaped by `html/template`. This change had no
+  dedicated audit pass.
+- **R10 — The notification URL is a credential (D-20).** Anyone who reads it can post to your channel.
+  *Mitigated by:* it lives only in the stack environment, is never logged or shown in the UI, and the
+  startup log shows only the channel kind and host. Rotate it if it leaks.

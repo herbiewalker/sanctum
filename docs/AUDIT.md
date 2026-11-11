@@ -690,8 +690,13 @@ that carries these changes and a throwaway tag has exercised `release.yml`.** D1
 - All five page templates were rewritten (HTML and inline CSS only; one external same-origin script (upload progress), no inline script or event handler, no
   external resource). `TestUITemplatesAreScriptFreeAndSelfContained` enforces that.
 - New response header on every page: `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline';
-  img-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'` (`TestUISendsStrictCSP`).
-  `style-src 'unsafe-inline'` is needed for the inline stylesheet; scripts remain fully blocked.
+  script-src 'self'; connect-src 'self'; img-src 'self' data:; form-action 'self'; base-uri 'none';
+  frame-ancestors 'none'` (`TestUISendsStrictCSP`). `style-src 'unsafe-inline'` is needed for the inline
+  stylesheet. Scripts are limited to the single same-origin `/app.js` (see D-22).
+- Added after the redesign, all covered by tests: an upload progress script (`/app.js`, embedded in the
+  binary), a theme cookie (`POST /theme`, HttpOnly, value pinned to light or dark, redirect pinned to known
+  paths), optional password hints (index schema v2, capped at 200 characters, dropped if they contain the
+  password), and the logo files. Risks are recorded as R8 and R9 in `THREAT_MODEL.md`.
 - Timestamps on the status and passwords pages changed from RFC 3339 to `2006-01-02 15:04 UTC` (display only).
 - Checked by hand in Chromium: all pages at 9 widths from 280 to 1920 px (no horizontal overflow, 72 page and
   width combinations), light and dark, real form posts and redirects under the CSP. Not tested in Firefox
@@ -728,8 +733,7 @@ forward into M6 deploy-to-Unraid:
   posture makes this acceptable.
 - Backup passwords sit cleartext in the sealed SQLite index while
   unlocked (on the F01-guarded tmpfs). Required by D-13/F18.
-- No CSP / X-Frame-Options today — LAN-only + static templates +
-  SameSite=Strict cookies make this low-impact.
+- *(Superseded in v0.1.1: every page now sends a strict CSP, which includes `frame-ancestors 'none'`. See the post-audit section above.)*
 - Watcher does not check inbox entries for symlink escape — inbox is
   `:ro` and any followed link fails TRYSTBK1 parse harmlessly.
 

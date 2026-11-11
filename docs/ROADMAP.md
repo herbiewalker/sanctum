@@ -1,6 +1,6 @@
 # Sanctum — Roadmap
 
-> **Status:** M0 in progress (2026-08-22). Milestones in order; **foundations before features**
+> **Status:** M0 to M6 are done and v0.1.0 and v0.1.1 are released (2026-11-11). Milestones in order; **foundations before features**
 > (principle 2). Each milestone has exit criteria and is not done until they are met
 > (`checklists/01-milestone-exit.md`). Do not start the next until the current one exits.
 
@@ -29,14 +29,10 @@ folder.
       exposure/limits, and a clean trivy vuln+secret scan
 - [x] Clean-checkout verification: cloned to a fresh directory, built, tested, guards ran, binary
       serves `/healthz` reporting `locked`
-- [ ] **Healthcheck flag** — `docker-compose.yml` calls `sanctum -healthcheck`, which does not exist
-      yet. Distroless has no shell or curl, so this cannot be a `curl -f`
-- [ ] **Verify graceful shutdown** — `docker stop` must log `shutdown complete` (N11). Unverifiable
-      on Windows: Git Bash cannot deliver a real SIGTERM to a native binary, so it terminates at
-      exit 143 without running the handler. Tracked as OL-7
+- [x] **Healthcheck flag** — `sanctum -healthcheck` (added in M4); distroless has no shell or curl, so it cannot be a `curl -f`
+- [x] **Verify graceful shutdown** — `docker stop` logs `shutdown complete` (N11); confirmed on the live host by the smoke script (OL-7 closed)
 - **Exit:** a clean checkout reaches a green build and a green CI run with every guard armed;
   the image runs as non-root and serves `/healthz`. **No user data has been touched yet.**
-  *(Two boxes remain: the healthcheck flag and the SIGTERM verification.)*
 
 ## M1 — Crypto foundation: read `TRYSTBK1`
 
@@ -65,8 +61,7 @@ skips when unset.
       streamed with `json.Decoder`, encounter rows never materialised
 - [x] Media entries counted from the ZIP central directory only — N19 proven with a synthetic
       method-99 entry whose Open() fails, and inspectZip succeeding means we never opened it
-- [ ] `internal/vaultkey`: passphrase → runtime key, RAM-only, zeroed on lock/SIGTERM
-      *(deferred to M2 — it belongs with the sealed-index code that uses it)*
+- [x] `internal/vaultkey`: passphrase → runtime key, RAM-only, zeroed on lock/SIGTERM *(landed in M2, with the sealed-index code that uses it)*
 - **Exit:**
   - [x] **Interop against genuine `.tryst` files** — passed 2026-08-22 against three real fixtures:
         3 KB catalog-seed (schema v15, 6 tables), 21 MB (schema v8, 6 media, 22 MB media), 34 MB
@@ -115,8 +110,7 @@ skips when unset.
         zero-recovery); tampered blobs are counted skipped, not silently accepted.
   - [x] `CGO_ENABLED=0 go build` still produces the static binary — the pure-Go SQLite driver
         does not compromise the distroless image.
-  - [ ] `guard-no-plaintext` still SKIPs at the whole-project level (M3 is what installs the
-        real ingest path). The blobstore-side check is already inline
+  - [x] `guard-no-plaintext` armed at M3 (the real ingest path). The blobstore-side check is inline too
         (`TestPut_LeavesNoZipMagicOnDisk`).
 
 ## M3 — The ingest pipeline
@@ -194,10 +188,7 @@ skips when unset.
         1/minute; 5th wrong attempt on a bucket that started empty returns the "Too many attempts"
         page.
   - [x] Session cookie issued before a re-lock cycle fails to authenticate afterwards (N17).
-  - [ ] SIGTERM handler executes end-to-end on a real Unraid host. Windows can't deliver a real
-        SIGTERM (SETUP.md); the `vault.Close()`-triggered seal path IS verified via
-        `POST /lock` on the live server (same code path), and CI's Linux build exercises the
-        wiring — but a genuine `docker stop` on the box still closes OL-7.
+  - [x] SIGTERM handler executes end-to-end on a real Unraid host: the live smoke script logs a graceful shutdown on `docker stop` (OL-7 closed 2026-11-11).
 
 ## M5 — Retention, staleness, alerting
 
@@ -247,95 +238,67 @@ skips when unset.
         malformed intents without writing.
   - [x] N15 respected: alert bodies carry owner label + counts + reason codes; never a partner
         name, filename, or event `detail` from the index.
-  - [ ] **Live-fire on a real Unraid box** — the "notification path that has never fired is not
-        a notification path" line is satisfied when M6 deploys the dispatcher and one intent is
-        confirmed on the operator's dashboard. Deliberate M5→M6 handoff.
+  - [x] **Live-fire on a real Unraid box** — superseded by D-20 (built-in notifier to a pasted URL, test-fired with `-notify-test`); see M6.
 
-## M6 — Deploy to Unraid *(the first live rung)*
+## M6 — Deploy to Unraid *(the first live rung)* — done
 
-- [ ] `RUNBOOK.md` complete: start/stop, unlock, post-reboot checklist, backup, restore, rollback
-- [ ] Deployed on the real box, LAN-only, non-root, limits applied
-- [ ] **Validation ladder** (principle 11): synthetic fixture → one real backup → the full history
-- [ ] Restore drill: restore a backup out of Sanctum and **actually import it into Tryst**
-- **Exit:** the README's "never yet run on a live target" status line comes off — and not before
-  (principle 11 / lesson L14). A restore has been proven by loading it back into the app, not by
-  comparing hashes alone.
+- [x] `RUNBOOK.md` complete: start/stop, unlock, post-reboot checklist, backup, restore, upgrade, rollback
+- [x] Deployed on a real Unraid host, LAN-only, non-root, limits applied
+- [x] **Validation ladder** (principle 11): synthetic fixture, then one real backup, then the full
+      history (a real 419 MB backup was ingested)
+- [x] Restore drill: a backup restored out of Sanctum, byte-identical, and **imported into Tryst**
+- **Exit:** met. The "never yet run on a live target" status line came off with this milestone.
+
+## Releases
+
+| Version | Date | What |
+|---------|------|------|
+| v0.1.0 | 2026-11-11 | First public release: GHCR image per tag (scanned, provenance-attested), Unraid template, built-in notifications, update check, going-public history strategy (D-19 to D-21) |
+| v0.1.1 | 2026-11-11 | Audit nits D10 to D15; redesigned responsive web UI with built-in help; upload progress bar; light, dark and automatic theme; optional password hints (index schema v2); strict CSP (D-22) |
+| next | — | Real logo in the header (on `main`); see the backlog below |
 
 ---
 
-## Post-M6 candidates *(captured 2026-08-23 — order set at next planning session)*
+## Done since M6
 
-> Feature freeze applies (principle 9): nothing here starts until M6 exits and its retro is written.
-> These are backlog placeholders — the shape of each milestone lands when it moves to the top.
+- **One-command deploy** — published public image on GHCR and an Unraid template (D-19).
+- **Mobile-friendly, modern UI** — responsive layout, design tokens, light and dark themes, WCAG-minded
+  contrast, keyboard operability and one-handed restore on a phone (D-22). Not yet checked in Firefox
+  or Safari.
+- **Upload progress** — a real transfer bar, then a "checking" stage, with cancel (D-22).
+- **Optional password hints** (D-22).
 
-### One-command deploy on any Unraid host
-> "Copy one line in the terminal and deploy — no SSH, no key, no build wait."
+## Backlog *(order set at the next planning session)*
 
-The current workflow needs: SSH into the box, mint a deploy key, add to GitHub, `git clone`,
-`docker build`, then Compose Manager. That is too many steps for the goal of
-"drop Sanctum onto any of my servers whenever I want."
-
-Two paths, not mutually exclusive:
-
-- **A — Publish image + go public.** Publish `sanctum` to GHCR as a public image (per-tag digest
-  pinned), make the repo public (walks `/pb-going-public` first — full git-history secret/PII
-  audit, README-for-strangers, license clarity). The compose file loses its `build:` stanza; the
-  operator pastes a compose file + env, Compose Up, done.
-- **B — Unraid Community App template.** Author a template XML in `dcflachs`'s templates repo so
-  Sanctum appears in the Community Applications tab of every Unraid box. One click install with
-  all fields exposed as GUI form inputs. Depends on Path A being done first (needs a public image).
-
-### Mobile-friendly, modern UI
-> "Sanctum has to work on the phone browser cleanly — Tryst is a phone app, the daily-driver
-> restore flow is a phone flow."
-
-Present state: server-rendered semantic HTML, functional but desktop-centric layout, minimal
-styling. Audit U01/U02/U03 flagged low contrast on hint text, weak focus indicators, and
-error-severity conveyed by color only.
-
-Scope this milestone as a bundle:
-
-- Responsive layout that works cleanly on 375 px-wide phone viewports without horizontal scroll.
-- Design system: type scale, spacing tokens, focus states, dark-mode polish (currently just
-  `color-scheme: light dark`, no polish beyond browser default).
-- WCAG AA contrast, keyboard-first operability, aria-live on error boxes.
-- The restore flow specifically works one-handed on a phone (large tap targets, no hover-only
-  affordances).
-
-### Ongoing backlog
-> Add items here as they surface. This list is expected to grow.
-
-- **Upload and download progress visuals** *(user request, 2026-11-06).* Found live: a 419 MB upload
-  shows a frozen page for minutes (transfer, then trial decrypt: 600k PBKDF2 rounds per saved password,
-  tried in turn), so it looks hung. Show where the user is in the process:
-  - Upload: a real transfer progress bar (XHR/fetch with upload progress events, small inline script,
-    page must still work with scripting off), then clearly named server-side stages ("Uploaded", "Checking
-    the header", "Trying saved passwords (2 of 3)", "Opening the archive", "Stored") instead of one spinner.
-    Server side that likely means the upload returns at once with a job id and the page polls a small
-    status endpoint, which also survives a browser tab being closed mid-verify.
-  - Download (restore): show size and progress while streaming; set `Content-Length` so the browser's own
-    progress bar is accurate, and say "preparing" while the blob is verified before the first byte.
-  - Same pass should cover a hard size/limit message up front (the 512 MiB format cap) so a too-large file
-    fails before the transfer, not after.
-  Fits naturally with the mobile UI bundle above; keep the no-JS fallback and the CSP unchanged (no inline
-  script: ship it as a same-origin file).
+- **Finer upload stages.** Today the verify stage is one moving bar. Naming the stages ("checking the
+  header", "trying saved passwords (2 of 3)", "opening the archive") needs the upload to return a job id and
+  the page to poll a small status endpoint, which would also survive closing the tab mid-verify.
+- **Download progress.** Set an accurate `Content-Length`, say "preparing" while the blob is verified
+  before the first byte, and show the size up front.
+- **Say the size limit up front.** Refuse a file over the 512 MiB format cap before the transfer, not after.
+- **Cross-browser pass.** Check the UI in Firefox and Safari and on a physical phone.
+- **Audit the post-audit changes.** A dedicated delta-audit pass over the UI redesign, the CSP, `/app.js`,
+  the theme cookie and password hints (R8, R9).
+- **Screenshots in the README.**
 
 ---
 
 ## Pre-release audit (Phase 3)
 
-> A separate program, not a feature milestone. Freeze features first (principle 9); one lens per
-> **fresh session** (`/pb-audit-pass`). See `checklists/02-pre-release-audit.md`.
+> A separate program, not a feature milestone. Done for v0.1.0: eight self-run passes, recorded in
+> [AUDIT.md](AUDIT.md) with their findings and what was fixed. No independent review has happened.
 
-- [ ] Dependencies & licenses (Go module graph; confirm no GPL contamination per D-7)
-- [ ] Secrets / storage / logging (N2, N15 — the highest-value lens here)
-- [ ] Network / exposed surface (D-12; confirm only the one port, no host network)
-- [ ] Input / injection (the whole of T6 — the inbox is untrusted input)
-- [ ] Build hardening (non-root, read-only rootfs, caps, digest pin, trivy clean)
-- [ ] Crypto review — a dedicated lens, given D-6 chose a different implementation from the app's
-- [ ] **Go / no-go**, listing covered vs accepted residual (`THREAT_MODEL.md` R1–R6)
+- [x] Dependencies and licenses
+- [x] Secrets, storage and logging (N2, N15)
+- [x] Network and exposed surface (D-12)
+- [x] Input and injection (T6)
+- [x] Build hardening
+- [x] Crypto review
+- [x] Delta audit of the post-freeze range, before v0.1.0
+- [ ] Delta audit of the v0.1.1 web UI changes (see the backlog)
+- [ ] An independent, outside review
 
-## Deferred / backlog
+## Deferred (v2 and beyond)
 
 | Item | Why deferred | Gate |
 |------|--------------|------|

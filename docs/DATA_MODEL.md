@@ -1,6 +1,6 @@
 # Sanctum — Data Model
 
-> **Status:** Design intent — **index schema v2 (v1 + optional password hint).** Lands in M1/M2. The migration
+> **Status:** Implemented. **Index schema v2** (v1 plus the optional password `hint`, added in v0.1.1). The migration
 > rule below is in force from the first stateful commit (principle 2 / lesson L6), not added later.
 
 Two independent things are versioned here, and conflating them is the classic mistake:
@@ -16,7 +16,7 @@ Sanctum **records** the last two and never dictates them. A backup from a future
 still be storable and restorable even if Sanctum cannot fully interpret its contents — a vault that
 refuses to hold a backup because it is too new has failed at its one job.
 
-## Entities (index, schema v1)
+## Entities (index, schema v2)
 
 ### `owner`
 | Field | Type | Notes |

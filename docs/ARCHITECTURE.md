@@ -1,8 +1,8 @@
 # Sanctum — Architecture
 
-> **Status:** Design intent (2026-08-22). Nothing below is implemented yet beyond the M0 scaffold —
-> this describes the shape the roadmap builds toward. Update it in the same change that makes it
-> stale (principle 3).
+> **Status:** Implemented and released (v0.1.x). Update it in the same change that makes it stale
+> (principle 3). Decision records are in [DECISIONS.md](DECISIONS.md); the original design intent was
+> written on 2026-08-22.
 
 ## Stack
 
@@ -55,9 +55,14 @@
 | `internal/blobstore` | immutable owner-scoped blob storage + SHA-256 manifest | filesystem |
 | `internal/index` | SQLite on tmpfs; seal/unseal to the array | vaultkey, filesystem |
 | `internal/watcher` | inbox directory watch, debounce, hand off to ingest | ingest |
-| `internal/httpapi` | unlock page, upload, status, restore, `/healthz` | ingest, index, blobstore |
-| `internal/retention` | scheduled prune + staleness evaluation | index, notifier |
-| `internal/notify` | Unraid notification channel (see O-2) | host |
+| `internal/httpapi` | the web UI and routes: unlock, login, status, upload, restore, passwords, theme, `/healthz`; embedded templates and the small `/app.js` (upload progress) and logo files; strict CSP | vault, ingest, index, session |
+| `internal/vault` | the LOCKED/UNLOCKED coordinator: manifest, unlock, seal, lock, owns the index, blob store and ingest service | vaultkey, index, blobstore, ingest |
+| `internal/session` | RAM-only owner sessions, idle and absolute TTLs, cleared on lock (D-17) | httpapi |
+| `internal/scheduler` | one ticker driving verify, retention and alert tasks on their own cadences | retention, verify, notify |
+| `internal/verify` | scheduled re-verification of stored blobs (hash and trial decrypt) | blobstore, index |
+| `internal/updatecheck` | opt-in daily check of the public releases API; reports only | notify |
+| `internal/retention` | prune policy and staleness evaluation | index, notify |
+| `internal/notify` | built-in notifier to one pasted URL (ntfy, Discord, Slack, webhook; D-20), plus the optional host drop-folder channel (D-18) | network, host |
 
 ## The two states
 
@@ -108,3 +113,22 @@ the watcher. A wrong passphrase fails on AEAD authentication of the index seal, 
   v1 and the blob layout is versioned independently of it.
 - **Time** matters for staleness (F9) and retention (F8) — use UTC internally, and never trust a
   timestamp from inside a backup for retention decisions.
+
+## The web interface
+
+Server-rendered Go `html/template` pages, embedded in the binary, with inline CSS and no framework.
+The design goals are that it works offline on a LAN, in any browser, at any width, and that the
+Content-Security-Policy can stay strict.
+
+- **One optional script.** `/app.js` (same origin, no inline script) adds the upload progress bar by
+  intercepting the upload form. Without it the form posts normally. The CSP allows
+  `script-src 'self'` and `connect-src 'self'` and nothing else.
+- **Theme.** Colours are CSS custom properties. The default follows `prefers-color-scheme`; a footer
+  switch posts to `/theme`, which sets a small `sanctum_theme` cookie that renders `data-theme` on the
+  page. No JavaScript is involved, and "auto" clears the cookie.
+- **Responsive.** Mobile-first; tables become labelled stacked cards on narrow screens. Skip link,
+  visible focus and reduced-motion support are built in.
+- **Static files.** The logo and `/app.js` are public and carry no data. Everything else needs the
+  vault unlocked and, past the unlock page, an owner session.
+- **Password hints.** The optional per-password hint lives in the sealed index (schema v2), is shown
+  only to the signed-in owner, and is never put in notifications or logs.

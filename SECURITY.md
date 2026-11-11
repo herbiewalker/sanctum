@@ -13,3 +13,6 @@ What is in scope: the Sanctum service, its container image, and the scripts unde
 What is a known, accepted limit rather than a vulnerability: see **Known limitations** in the README
 and the residual risks in `docs/THREAT_MODEL.md` (for example, Sanctum cannot defend the data against
 root on the host while the vault is unlocked).
+
+**Supported versions:** only the latest release (the `:stable` image). Fixes ship as a new patch
+release; older tags are not patched.

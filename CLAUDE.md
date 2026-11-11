@@ -47,9 +47,8 @@ reference, not the requirement.
 2. **No plaintext of user data is ever written to the array.** appdata holds only (a) opaque
    `TRYSTBK1` blobs exactly as Tryst wrote them, and (b) a derived index encrypted under the runtime
    key. Decrypted `data.json` and media exist only in memory or tmpfs, for the life of a request.
-   *Guard:* `scripts/guards.sh no-plaintext` — **wired but not yet armed**: it reports SKIP until
-   `internal/ingest` exists at M3, then runs a full ingest+index cycle against a temp dir and fails
-   if any file outside the tmpfs mount is readable as ZIP/JSON.
+   *Guard:* `scripts/guards.sh no-plaintext` — armed since M3: it runs a full ingest+index cycle against
+   a temp dir and fails if any file in the vault is readable as ZIP/JSON or carries a sentinel string.
 
 3. **The key is never at rest.** No passphrase, key, or derived key material in the image, in
    `docker-compose.yml`, in a `.env` on the array, or in appdata. The container starts **locked**;
@@ -75,7 +74,7 @@ reference, not the requirement.
    *Guard:* `scripts/guards.sh digest-pin` (stricter than a no-`:latest` check — it requires
    `@sha256:` on **every** `FROM`), plus `.github/workflows/ci.yml`: `docker inspect` non-root
    assertion, a compose exposure/limits check, and a trivy vuln+secret scan on the built image.
-   **SIGTERM handling is unverified on Windows** — proven with `docker stop` at M0 exit (N11).
+   SIGTERM handling cannot be verified on Windows; `scripts/smoke-live.sh` proves it with `docker stop` on a real Docker host (N11).
 
 7. **LAN-only in v1.** No port forwarding, no public DNS, no reverse proxy to the internet. Remote
    access, if it ever happens, is Tailscale/WireGuard — never an exposed port.
@@ -92,6 +91,8 @@ reference, not the requirement.
 - **Alert** when the newest backup for an owner goes stale (Unraid notification, same posture as
   `immich-backup --remind`: monthly nudge, escalating).
 - **Restore**: hand back an exact byte-identical `.tryst` file for any retained version.
+- **Web UI**: responsive, light/dark/auto theme, built-in help, upload progress, optional password hints
+  (D-22). Plain HTML and CSS plus one same-origin script; strict CSP.
 
 **Out of scope for v1:** viewing/browsing encounter data; partner sharing or any merged view; any
 change to the Tryst app; internet exposure; mobile push; multi-tenant beyond two owners; automated
@@ -127,6 +128,11 @@ store blob immutably → index). The index and every stored blob are encrypted u
 that exists only in process memory, derived from a passphrase a human enters after each container
 start; until then the service serves nothing but the unlock page and `/healthz`. Details in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Current state
+
+v0.1.1 is released (GHCR image per tag, `:stable` follows the latest). Milestones M0 to M6 are done; see
+[docs/ROADMAP.md](docs/ROADMAP.md) for releases and the backlog. Releases are cut with `scripts/release.sh`.
 
 ## Build & run
 
