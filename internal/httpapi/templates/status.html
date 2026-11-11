@@ -1,36 +1,70 @@
 {{define "body_status"}}
-<h2>Vault status</h2>
-<table>
-  <tr><th>Owner</th><td>{{.Status.OwnerLabel}} <code>({{.Status.OwnerID}})</code></td></tr>
-  <tr><th>Backups</th><td>{{.Status.BackupCount}} · newest {{.Status.NewestAge}} ago</td></tr>
-  <tr><th>Total size</th><td>{{.Status.TotalSizeHuman}}</td></tr>
-  <tr><th>Last verify</th><td>{{.Status.LastVerified}}</td></tr>
-</table>
+<h1>Backups</h1>
+<p class="lead">Every backup here has been checked: Sanctum opened it with one of your saved passwords before keeping it.</p>
 
-<h2>Upload a backup</h2>
-<form method="post" action="/upload" enctype="multipart/form-data">
-  <label for="file">Choose a <code>.tryst</code> file</label>
-  <input id="file" name="file" type="file" accept=".tryst" required>
-  <button type="submit" class="primary">Upload &amp; verify</button>
-</form>
-<p class="muted">The file is verified by trial-decrypt against your password set (D-13); a duplicate
-SHA-256 is refused before any KDF work.</p>
+<div class="stats">
+  <div class="stat"><div class="k">Backups</div><div class="v">{{.Status.BackupCount}}</div><div class="s">kept in the vault</div></div>
+  <div class="stat"><div class="k">Newest</div><div class="v">{{.Status.NewestAge}}</div><div class="s">{{if .Status.Stale}}<span class="tag warn">Overdue</span>{{else}}{{if .Status.BackupCount}}<span class="tag ok">On time</span>{{else}}none yet{{end}}{{end}}</div></div>
+  <div class="stat"><div class="k">Total size</div><div class="v">{{.Status.TotalSizeHuman}}</div><div class="s">on disk, still encrypted</div></div>
+  <div class="stat"><div class="k">Last checked</div><div class="v sm">{{.Status.LastVerified}}</div><div class="s">newest backup verified</div></div>
+</div>
+<p class="muted small">Owner: {{.Status.OwnerLabel}} <code>{{.Status.OwnerID}}</code></p>
 
-<h2>Recent backups</h2>
-{{if not .Status.Backups}}
-<p class="muted">No backups yet. Drop a <code>.tryst</code> file in the inbox share, or upload one above.</p>
-{{else}}
-<table>
-  <tr><th>Date</th><th>Size</th><th>Schema</th><th>SHA prefix</th><th>Restore</th></tr>
-  {{range .Status.Backups}}
-  <tr>
-    <td>{{.When}}</td>
-    <td>{{.SizeHuman}}</td>
-    <td>v{{.TrystSchemaVersion}}</td>
-    <td><code>{{.SHAPrefix}}</code></td>
-    <td><a href="/restore/{{.ID}}">download</a></td>
-  </tr>
+<section class="card">
+  <h2>Add a backup</h2>
+  <p class="muted small flush">Choose a <code>.tryst</code> file exported from Tryst. Sanctum checks that it opens before keeping it.</p>
+  <form class="stack" method="post" action="/upload" enctype="multipart/form-data">
+    <div class="field">
+      <label for="file">Backup file
+        <span class="tip"><span class="q" tabindex="0" role="button" aria-label="More about uploading" aria-describedby="t-up">?</span><span class="body" id="t-up" role="tooltip">The file is checked by opening it with your saved passwords. A file that was already added is refused straight away. Large files can take a few minutes with no progress bar, so please wait.</span></span>
+      </label>
+      <input id="file" name="file" type="file" accept=".tryst" required>
+      <div class="hint">Prefer not to use the browser? Drop the file in the inbox folder on the server and Sanctum picks it up.</div>
+    </div>
+    <div><button type="submit" class="btn primary">Upload and check</button></div>
+  </form>
+</section>
+
+<section class="card">
+  <div class="row"><h2>Your backups</h2></div>
+  {{if not .Status.Backups}}
+  <div class="empty">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+    <p><strong>No backups yet.</strong><br>Upload one above, or drop a <code>.tryst</code> file in the inbox folder.</p>
+  </div>
+  {{else}}
+  <div class="tablewrap">
+  <table>
+    <thead><tr>
+      <th scope="col">Date</th>
+      <th scope="col">Size</th>
+      <th scope="col">Format</th>
+      <th scope="col">Fingerprint</th>
+      <th scope="col"><span class="sr-only">Download</span></th>
+    </tr></thead>
+    <tbody>
+    {{range .Status.Backups}}
+    <tr>
+      <td data-label="Date">{{.When}}</td>
+      <td data-label="Size">{{.SizeHuman}}</td>
+      <td data-label="Format">v{{.TrystSchemaVersion}}</td>
+      <td data-label="Fingerprint"><code>{{.SHAPrefix}}</code></td>
+      <td><a class="btn sm" href="/restore/{{.ID}}" title="Download this exact backup file">Download</a></td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+  <details class="learn">
+    <summary>What do these columns mean?</summary>
+    <p><strong>Format</strong> is the version of Tryst's database inside the backup. Newer Tryst versions use higher numbers.</p>
+    <p><strong>Fingerprint</strong> is the first characters of the file's SHA-256 checksum. If another copy has the same fingerprint, it is byte-for-byte the same file.</p>
+  </details>
+  <details class="learn">
+    <summary>How do I restore a backup?</summary>
+    <p>Download the file, copy it to your phone, and open it from Tryst's restore screen with the password it was
+    made with. The download is the exact file Tryst created, unchanged.</p>
+  </details>
   {{end}}
-</table>
-{{end}}
+</section>
 {{end}}

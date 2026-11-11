@@ -2,62 +2,250 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#4f46e5">
 <title>Sanctum</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234f46e5'/%3E%3Cpath d='M8 11V8.5a4 4 0 1 1 8 0V11' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round'/%3E%3Crect x='6.5' y='11' width='11' height='7.5' rx='2' fill='white'/%3E%3C/svg%3E">
 <style>
-:root { color-scheme: light dark; }
+/* Sanctum UI. No JavaScript and no external assets by design: the page works
+   offline on a LAN, in any browser, at any width. Newer CSS is always paired
+   with a plain fallback declared just before it. */
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --surface-2: #f1f3f7;
+  --text: #0f172a; --muted: #566074; --border: #dfe3ea;
+  --accent: #4f46e5; --accent-hover: #4338ca; --accent-text: #ffffff; --accent-soft: #eef0ff;
+  --ok: #166534; --ok-bg: #e8f6ee; --ok-border: #b7e3c8;
+  --warn: #8a4b08; --warn-bg: #fff4e0; --warn-border: #f3d29c;
+  --bad: #b42318; --bad-bg: #fdecea; --bad-border: #f4b8b2;
+  --info-bg: #eef2ff; --info-border: #cbd3fb;
+  --shadow: 0 1px 2px rgba(15,23,42,.06), 0 4px 16px rgba(15,23,42,.05);
+  --radius: 12px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0f17; --surface: #121826; --surface-2: #182034;
+    --text: #e8ebf2; --muted: #9ba5b8; --border: #26304a;
+    --accent: #8b93ff; --accent-hover: #a3a9ff; --accent-text: #0b0f17; --accent-soft: #1b2142;
+    --ok: #6fd69a; --ok-bg: #0f2a1d; --ok-border: #1d5a3a;
+    --warn: #f2b45a; --warn-bg: #2b2010; --warn-border: #5e4318;
+    --bad: #ff8d84; --bad-bg: #2d1412; --bad-border: #6b2a25;
+    --info-bg: #161c38; --info-border: #2f3a6e;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  }
+}
 * { box-sizing: border-box; }
-body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 2rem; max-width: 40rem; margin-inline: auto; }
-h1, h2 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; }
-h1 { font-size: 1.4rem; }
-h2 { font-size: 1.1rem; }
-main { padding-block: 1rem; }
-form { display: flex; flex-direction: column; gap: 0.75rem; margin-block: 1rem; padding: 1rem;
-       border: 1px solid #8886; border-radius: 6px; }
-label { font-weight: 500; font-size: 0.9rem; }
-input[type=password], input[type=text], input[type=file] { padding: 0.5rem; font: inherit;
-  border: 1px solid #8886; border-radius: 4px; background: transparent; color: inherit; }
-button { padding: 0.5rem 1rem; font: inherit; cursor: pointer; border: 1px solid #8886;
-  border-radius: 4px; background: transparent; color: inherit; }
-button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
-.err { padding: 0.6rem 0.8rem; border: 1px solid #dc2626; color: #dc2626; border-radius: 4px;
-       background: #dc26261a; }
-.ok  { padding: 0.6rem 0.8rem; border: 1px solid #16a34a; color: #16a34a; border-radius: 4px;
-       background: #16a34a1a; }
-.warn { padding: 0.6rem 0.8rem; border: 1px solid #d97706; color: #d97706; border-radius: 4px;
-        background: #d977061a; margin-bottom: 0.5rem; }
-.muted { color: #8888; font-size: 0.85rem; }
-table { width: 100%; border-collapse: collapse; margin-block: 1rem; }
-th, td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #8883; text-align: left; font-size: 0.9rem; }
-th { font-weight: 600; }
-code { font: 13px ui-monospace, monospace; padding: 1px 4px; border-radius: 3px; background: #8881; }
-nav { display: flex; gap: 1rem; margin-bottom: 1rem; }
-nav a { color: inherit; }
-footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #8883; color: #8888; font-size: 0.8rem; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  padding: 0 16px 32px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { color: var(--accent-hover); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--surface); color: var(--text);
+        padding: 8px 12px; border-radius: 8px; z-index: 10; }
+.skip:focus { left: 8px; }
+.wrap { max-width: 60rem; margin: 0 auto; }
+
+/* --- header ---------------------------------------------------------------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+       gap: 12px 16px; padding: 18px 0 14px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text);
+         font-weight: 700; font-size: 1.25rem; letter-spacing: -.01em; }
+.brand svg { width: 34px; height: 34px; flex: none; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 999px;
+        font-size: .8rem; font-weight: 600; border: 1px solid var(--border); background: var(--surface); }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.pill.on  { color: var(--ok);   background: var(--ok-bg);   border-color: var(--ok-border); }
+.pill.on i  { background: var(--ok); }
+.pill.off { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-border); }
+.pill.off i { background: var(--warn); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--surface);
+        border: 1px solid var(--border); border-radius: 999px; }
+.tabs a { text-decoration: none; color: var(--muted); padding: 6px 14px; border-radius: 999px;
+          font-weight: 600; font-size: .92rem; }
+.tabs a:hover { color: var(--text); }
+.tabs a[aria-current="page"] { background: var(--accent); color: var(--accent-text); }
+.bar form { margin: 0; padding: 0; border: 0; display: inline; }
+
+/* --- layout primitives ------------------------------------------------------ */
+main { padding-top: 6px; outline: none; }
+h1 { font-size: 1.6rem; line-height: 1.2; margin: 18px 0 6px; letter-spacing: -.02em; }
+h2 { font-size: 1.1rem; margin: 0 0 4px; letter-spacing: -.01em; }
+.lead { color: var(--muted); margin: 0 0 18px; max-width: 42rem; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+        box-shadow: var(--shadow); padding: 20px; margin-block: 16px; }
+.card > :first-child { margin-top: 0; }
+.card > :last-child { margin-bottom: 0; }
+.narrow { max-width: 30rem; margin-inline: auto; }
+.center { text-align: center; }
+.badge-ico { width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 8px; display: grid;
+             place-items: center; background: var(--accent-soft); color: var(--accent); }
+.badge-ico svg { width: 30px; height: 30px; }
+.muted { color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+           clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.flush { margin-top: 0; }
+.stat .v.sm { font-size: 1rem; line-height: 1.7; }
+.small { font-size: .86rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 12px; margin-block: 16px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+.stat .k { color: var(--muted); font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat .v { font-size: 1.45rem; font-weight: 700; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.stat .s { color: var(--muted); font-size: .82rem; overflow-wrap: anywhere; }
+
+/* --- notices ---------------------------------------------------------------- */
+.note { display: flex; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1px solid;
+        margin-block: 12px; font-size: .95rem; }
+.note > div { min-width: 0; overflow-wrap: anywhere; }
+.note svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.note.err  { color: var(--bad);  background: var(--bad-bg);  border-color: var(--bad-border); }
+.note.ok   { color: var(--ok);   background: var(--ok-bg);   border-color: var(--ok-border); }
+.note.warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-border); }
+.note.info { color: var(--text); background: var(--info-bg); border-color: var(--info-border); }
+.note.info svg { color: var(--accent); }
+.note a { color: inherit; font-weight: 600; }
+
+/* --- forms ------------------------------------------------------------------ */
+form.stack { display: flex; flex-direction: column; gap: 16px; margin: 14px 0 0; padding: 0; border: 0; }
+.field label { display: block; font-weight: 600; font-size: .92rem; margin-bottom: 6px; }
+.field .hint { color: var(--muted); font-size: .84rem; margin-top: 5px; }
+input[type=text], input[type=password], input[type=file] {
+  width: 100%; padding: 11px 12px; font: inherit; font-size: 1rem; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; min-height: 44px;
+}
+input[type=text]:focus, input[type=password]:focus { border-color: var(--accent); outline: 3px solid var(--accent-soft); }
+input[type=file] { padding: 9px 10px; background: var(--surface-2); border-style: dashed; cursor: pointer; }
+input[type=file]::file-selector-button, input[type=file]::-webkit-file-upload-button {
+  margin-right: 12px; padding: 7px 14px; font: inherit; font-weight: 600; cursor: pointer;
+  border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-text); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+       padding: 10px 18px; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer;
+       border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.btn:hover { background: var(--surface-2); color: var(--text); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-text); }
+.btn.danger { color: var(--bad); border-color: var(--bad-border); }
+.btn.danger:hover { background: var(--bad-bg); color: var(--bad); }
+.btn.sm { min-height: 36px; padding: 6px 12px; font-size: .9rem; }
+.btn.block { width: 100%; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+button { font-family: inherit; }
+
+/* --- help: tooltips (CSS only, work on hover, keyboard focus and touch tap) --- */
+.tip { position: relative; display: inline-block; vertical-align: middle; margin-left: 4px; }
+.tip > .q { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+            border: 1px solid var(--border); background: var(--surface-2); color: var(--muted);
+            font-size: .72rem; font-weight: 700; cursor: help; line-height: 1; user-select: none; }
+.tip > .q:hover, .tip > .q:focus { color: var(--accent); border-color: var(--accent); outline: none; }
+.tip > .q:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.tip .body { position: absolute; left: -10px; bottom: calc(100% + 8px); width: 16rem; max-width: calc(100vw - 56px);
+             padding: 9px 11px; border-radius: 9px; z-index: 20;
+             background: var(--text); color: var(--bg); font-size: .82rem; font-weight: 400; line-height: 1.4;
+             text-transform: none; letter-spacing: 0; text-align: left; box-shadow: var(--shadow);
+             display: none; }
+.tip > .q:hover + .body, .tip > .q:focus + .body, .tip:focus-within .body { display: block; }
+
+details.learn { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+details.learn summary { cursor: pointer; font-weight: 600; font-size: .92rem; color: var(--accent);
+                        list-style: none; display: flex; align-items: center; gap: 6px; }
+details.learn summary::-webkit-details-marker { display: none; }
+details.learn summary::before { content: "+"; display: inline-grid; place-items: center; width: 20px; height: 20px;
+                                border-radius: 50%; background: var(--accent-soft); font-weight: 700; }
+details.learn[open] summary::before { content: "\2212"; }
+details.learn > :not(summary) { color: var(--muted); font-size: .92rem; }
+details.learn p { margin: 10px 0 0; }
+
+/* two-step delete with no JavaScript */
+details.confirm summary { list-style: none; display: inline-flex; cursor: pointer; }
+details.confirm summary::-webkit-details-marker { display: none; }
+details.confirm[open] summary { display: none; }
+details.confirm .ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+details.confirm form { margin: 0; padding: 0; border: 0; display: inline; }
+
+/* --- tables ----------------------------------------------------------------- */
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-block: 10px 0; }
+table { width: 100%; border-collapse: collapse; min-width: 30rem; }
+th, td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: .93rem; vertical-align: middle; }
+th { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+code { font: .85em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 2px 6px; border-radius: 6px;
+       background: var(--surface-2); border: 1px solid var(--border); }
+.empty { text-align: center; padding: 28px 12px; color: var(--muted); }
+.empty svg { width: 44px; height: 44px; color: var(--muted); opacity: .7; }
+.tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .78rem; font-weight: 700;
+       background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
+.tag.ok { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-border); }
+.tag.warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-border); }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+
+footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted);
+         font-size: .82rem; display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between; }
+
+@media (max-width: 40rem) {
+  body { font-size: 16px; padding-bottom: 24px; }
+  h1 { font-size: 1.4rem; }
+  .card { padding: 16px; }
+  .top { padding-top: 14px; }
+  .tabs { width: 100%; justify-content: stretch; }
+  .tabs a { flex: 1 1 auto; text-align: center; }
+  .bar { width: 100%; }
+  .bar .btn { flex: 1 1 auto; }
+}
+/* Narrow screens: table rows become labelled cards so nothing scrolls sideways. */
+@media (max-width: 40rem) {
+  .tablewrap { overflow-x: visible; }
+  table, thead, tbody, tr { display: block; min-width: 0; }
+  thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); }
+  tbody tr { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: 0; }
+  td { display: flex; justify-content: space-between; align-items: center; gap: 16px; border: 0; padding: 4px 0; text-align: right; }
+  td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: .76rem; font-weight: 700;
+                           text-transform: uppercase; letter-spacing: .05em; text-align: left; flex: none; }
+  td.empty { display: block; text-align: center; }
+  td .btn, td details.confirm { margin-left: auto; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .tabs a, input { transition: background-color .15s, border-color .15s, color .15s; }
+}
+@media print { .bar, .tabs, .skip { display: none; } body { background: #fff; color: #000; } }
 </style>
 </head>
 <body>
-<header>
-<h1>🔒 Sanctum</h1>
-{{if .Authed}}
-<nav>
-  <a href="/status">Status</a>
-  <a href="/passwords">Passwords</a>
-  <form method="post" action="/logout" style="display:inline;margin:0;padding:0;border:0;">
-    <button type="submit">Log out</button>
-  </form>
-  <form method="post" action="/lock" style="display:inline;margin:0;padding:0;border:0;">
-    <button type="submit">Lock vault</button>
-  </form>
-</nav>
-{{end}}
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="/" aria-label="Sanctum home">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent)"/><path d="M8 11V8.5a4 4 0 1 1 8 0V11" fill="none" stroke="var(--accent-text)" stroke-width="1.8" stroke-linecap="round"/><rect x="6.5" y="11" width="11" height="7.5" rx="2" fill="var(--accent-text)"/></svg>
+    Sanctum
+  </a>
+  {{if .Authed}}
+  <div class="bar">
+    <nav class="tabs" aria-label="Main">
+      <a href="/status"{{if eq .Body "body_status"}} aria-current="page"{{end}}>Backups</a>
+      <a href="/passwords"{{if eq .Body "body_passwords"}} aria-current="page"{{end}}>Passwords</a>
+    </nav>
+    <form method="post" action="/lock"><button type="submit" class="btn sm" title="Lock the vault now. You will need the vault passphrase to open it again.">Lock vault</button></form>
+    <form method="post" action="/logout"><button type="submit" class="btn sm">Log out</button></form>
+  </div>
+  {{else}}
+  <span class="pill {{if .Unlocked}}on{{else}}off{{end}}"><i></i>{{if .Unlocked}}Unlocked{{else}}Locked{{end}}</span>
+  {{end}}
 </header>
-<main>
-{{if .Warn}}<div class="warn">{{.Warn}}</div>{{end}}
-{{if .Update}}<div class="ok">Sanctum {{.Update.Latest}} is available{{if .Update.URL}} (<a href="{{.Update.URL}}" rel="noopener noreferrer">release notes</a>){{end}}. Pull the new image and restart; the vault will need unlocking afterwards.</div>{{end}}
-{{if .Flash}}<div class="ok">{{.Flash}}</div>{{end}}
-{{if .Error}}<div class="err">{{.Error}}</div>{{end}}
+<main id="main" tabindex="-1">
+{{if .Warn}}<div class="note warn" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div>{{.Warn}}</div></div>{{end}}
+{{if .Update}}<div class="note info" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div>Sanctum {{.Update.Latest}} is available{{if .Update.URL}} (<a href="{{.Update.URL}}" rel="noopener noreferrer">release notes</a>){{end}}. Pull the new image and restart. The vault locks on restart, so you will need to unlock it afterwards.</div></div>{{end}}
+{{if .Flash}}<div class="note ok" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg><div>{{.Flash}}</div></div>{{end}}
+{{if .Error}}<div class="note err" role="alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><div>{{.Error}}</div></div>{{end}}
 {{/* html/template requires literal template names; if-chain rather than a variable dispatch */}}
 {{if eq .Body "body_unlock"}}{{template "body_unlock" .}}
 {{else if eq .Body "body_login"}}{{template "body_login" .}}
@@ -66,7 +254,9 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #8883; color
 {{end}}
 </main>
 <footer>
-Sanctum{{if .Version}} {{.Version}}{{end}} · vault state: <code>{{if .Unlocked}}unlocked{{else}}locked{{end}}</code>
+  <span>Sanctum{{if .Version}} {{.Version}}{{end}} · your backups stay on your own server</span>
+  <span>Vault: <code>{{if .Unlocked}}unlocked{{else}}locked{{end}}</code></span>
 </footer>
+</div>
 </body>
 </html>{{end}}

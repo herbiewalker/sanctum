@@ -10,6 +10,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: 
 
 ## [0.1.1] - 2026-11-11
 
+### Changed — web interface redesigned
+- **New look, same pages.** A clean card layout with a state pill, a tabbed header, stat tiles on the
+  Backups page, plain-language copy, empty states and friendlier timestamps (`2026-11-08 14:03 UTC`).
+  Jargon such as ADR and requirement numbers is out of the page text.
+- **Built-in help.** Question-mark tooltips on the fields that need explaining, and "learn more" panels
+  that answer the obvious questions (why unlock after every restart, what the columns mean, what happens
+  when a password is deleted, how to restore).
+- **Works in any browser at any size.** Responsive from 280 px phones to wide desktops; tables become
+  stacked cards on narrow screens so nothing scrolls sideways; light and dark themes follow the system;
+  keyboard and screen-reader friendly (skip link, labelled controls, visible focus). No JavaScript and no
+  external fonts or images, so it also works offline on a LAN. Deleting a password is now a two-step
+  button instead of a script dialog.
+- **Stricter browser security headers (new).** Every page sends a Content-Security-Policy that allows no
+  scripts, no outside resources, no framing and only same-site form posts. Tests assert the templates stay
+  script-free and the header stays strict.
+
 ### Fixed — audit nits D10 to D15
 - **Discord alerts can no longer ping the channel (D10):** an owner label like `@everyone` was interpolated
   into the stale-backup message; the payload now disables mention parsing. Truncation no longer splits a

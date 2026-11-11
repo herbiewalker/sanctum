@@ -683,6 +683,19 @@ that carries these changes and a throwaway tag has exercised `release.yml`.** D1
 | D14 | Already documented in RUNBOOK "First unlock" (do first-run setup before the LAN can reach the port); RUNBOOK now also names the bind-IP setting there. | read |
 | D15 (new) | `smoke-live.sh` sampled memory in a background loop that never produced a reading for an upload refused in about 2 ms, so peak memory printed 0 MiB. It now samples synchronously before and after the upload and FAILS if `docker stats` returns nothing. | `bash -n`; memory-parsing awk run against `MiB`/`GiB`/`KiB`/`B` samples; live run is the next smoke on the host |
 
+
+### Post-audit change: web UI redesign and Content-Security-Policy (v0.1.1)
+> Un-audited by a dedicated pass (principle 9). The surface is small and tested, but it is new since Pass 008.
+
+- All five page templates were rewritten (HTML and inline CSS only; no script, no inline event handler, no
+  external resource). `TestUITemplatesAreScriptFreeAndSelfContained` enforces that.
+- New response header on every page: `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline';
+  img-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'` (`TestUISendsStrictCSP`).
+  `style-src 'unsafe-inline'` is needed for the inline stylesheet; scripts remain fully blocked.
+- Timestamps on the status and passwords pages changed from RFC 3339 to `2006-01-02 15:04 UTC` (display only).
+- Checked by hand in Chromium: all pages at 9 widths from 280 to 1920 px (no horizontal overflow, 72 page and
+  width combinations), light and dark, real form posts and redirects under the CSP. Not tested in Firefox
+  or Safari: the CSS uses only long-supported features, each with a plain fallback.
 ## Consolidated go/no-go (all Phase 3 passes)
 
 | Pass | Lens | Verdict |

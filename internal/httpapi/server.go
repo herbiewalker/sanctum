@@ -259,6 +259,9 @@ func (s *Server) render(w http.ResponseWriter, name string, data viewData) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
+	// No script, no external assets, no framing: the pages need only inline CSS.
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	if err := s.tmpl.ExecuteTemplate(w, "layout", data); err != nil {
 		s.logger.Error("template render", "page", name, "err", err.Error())
 	}
@@ -631,9 +634,9 @@ func (s *Server) handlePasswords(w http.ResponseWriter, r *http.Request) {
 	rows := make([]passwordRow, 0, len(list))
 	for _, p := range list {
 		row := passwordRow{ID: p.ID, Label: p.Label,
-			AddedWhen: time.Unix(p.AddedAt, 0).UTC().Format(time.RFC3339)}
+			AddedWhen: time.Unix(p.AddedAt, 0).UTC().Format("2006-01-02 15:04 UTC")}
 		if p.LastUsedAt != nil {
-			row.LastUsedWhen = time.Unix(*p.LastUsedAt, 0).UTC().Format(time.RFC3339)
+			row.LastUsedWhen = time.Unix(*p.LastUsedAt, 0).UTC().Format("2006-01-02 15:04 UTC")
 		} else {
 			row.LastUsedWhen = "never"
 		}
@@ -881,7 +884,7 @@ func (s *Server) buildStatusView(ownerID string) (*statusView, error) {
 		newest := backups[0]
 		view.NewestAge = humanDuration(s.now().Sub(time.Unix(newest.IngestedAt, 0)))
 		if newest.VerifiedAt != nil {
-			view.LastVerified = time.Unix(*newest.VerifiedAt, 0).UTC().Format(time.RFC3339)
+			view.LastVerified = time.Unix(*newest.VerifiedAt, 0).UTC().Format("2006-01-02 15:04 UTC")
 		}
 		threshold := s.stalenessDays
 		if own.StalenessDays != nil && *own.StalenessDays > 0 {

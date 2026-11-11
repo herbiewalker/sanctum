@@ -1,26 +1,54 @@
 {{define "body_unlock"}}
 {{if .FirstRun}}
-<p>This is a <strong>new vault</strong>. Choose its passphrase. It lives only in memory for this
-session (ADR D-4), every restart re-locks, and <strong>there is no recovery</strong>: if it is lost, the vault
-cannot be opened again. Save it in your password manager first, then copy and paste it into both
-boxes.</p>
-<form method="post" action="/unlock" autocomplete="off">
-  <label for="passphrase">New vault passphrase</label>
-  <input id="passphrase" name="passphrase" type="password" required autofocus autocomplete="new-password">
-  <label for="passphrase_confirm">Type it again</label>
-  <input id="passphrase_confirm" name="passphrase_confirm" type="password" required autocomplete="new-password">
-  <button type="submit" class="primary">Create vault</button>
-</form>
-<p class="muted">The two entries must match exactly. Nothing is created if they differ.</p>
+<section class="card narrow">
+  <div class="center">
+    <div class="badge-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+    <h1>Create your vault</h1>
+    <p class="lead">Choose a passphrase. It protects everything Sanctum stores.</p>
+  </div>
+  <div class="note warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div><strong>There is no recovery.</strong> If this passphrase is lost, the vault can never be opened again. Save it in your password manager first, then paste it into both boxes.</div></div>
+  <form class="stack" method="post" action="/unlock" autocomplete="off">
+    <div class="field">
+      <label for="passphrase">New vault passphrase
+        <span class="tip"><span class="q" tabindex="0" role="button" aria-label="More about this field" aria-describedby="t-pass">?</span><span class="body" id="t-pass" role="tooltip">Sanctum holds this only in memory while it runs. It is never saved to disk, so a restart locks the vault again.</span></span>
+      </label>
+      <input id="passphrase" name="passphrase" type="password" required autofocus autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="passphrase_confirm">Type it again</label>
+      <input id="passphrase_confirm" name="passphrase_confirm" type="password" required autocomplete="new-password">
+      <div class="hint">Both entries must match exactly. Nothing is created if they differ.</div>
+    </div>
+    <button type="submit" class="btn primary block">Create vault</button>
+  </form>
+  <details class="learn">
+    <summary>Why a passphrase, and why so strict?</summary>
+    <p>Your backups are encrypted, and Sanctum keeps the passwords to open them in a sealed index. That index is
+    locked with this passphrase. Because the passphrase is never stored anywhere, nobody who gets hold of the
+    server's disks can read your data. The trade-off is that you must type it after every restart.</p>
+  </details>
+</section>
 {{else}}
-<p>The vault is <strong>locked</strong>. Enter the vault passphrase to unlock — it lives only in
-memory for this session (ADR D-4), and any restart re-locks.</p>
-<form method="post" action="/unlock" autocomplete="off">
-  <label for="passphrase">Vault passphrase</label>
-  <input id="passphrase" name="passphrase" type="password" required autofocus autocomplete="current-password">
-  <button type="submit" class="primary">Unlock</button>
-</form>
-<p class="muted">Wrong passphrases fail cleanly and are rate-limited (N16). Forgetting this
-passphrase means the vault is unrecoverable — the second copy lives in your password manager.</p>
+<section class="card narrow">
+  <div class="center">
+    <div class="badge-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+    <h1>Unlock your vault</h1>
+    <p class="lead">The vault is locked. Enter the passphrase to open it.</p>
+  </div>
+  <form class="stack" method="post" action="/unlock" autocomplete="off">
+    <div class="field">
+      <label for="passphrase">Vault passphrase</label>
+      <input id="passphrase" name="passphrase" type="password" required autofocus autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn primary block">Unlock</button>
+  </form>
+  <details class="learn">
+    <summary>Why do I have to unlock after every restart?</summary>
+    <p>The passphrase lives only in memory and is never written to disk. That keeps your backups unreadable to
+    anyone who copies the server's drives. The cost is that a restart always locks the vault until you unlock it.</p>
+    <p>Too many wrong tries in a row are slowed down automatically. A typo will not lock you out for long.</p>
+    <p>If the passphrase is forgotten, the vault cannot be recovered. Keep a copy in your password manager.</p>
+  </details>
+</section>
 {{end}}
 {{end}}

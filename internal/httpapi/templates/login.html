@@ -1,25 +1,55 @@
 {{define "body_login"}}
 {{if .NeedsProvision}}
-<p>No owners exist yet in this vault. Create the first one:</p>
-<form method="post" action="/provision" autocomplete="off">
-  <label for="label">Display label <span class="muted">(kept neutral; per D-10)</span></label>
-  <input id="label" name="label" type="text" required>
-  <label for="username">Login username</label>
-  <input id="username" name="username" type="text" required autocomplete="username">
-  <label for="password">Login passphrase</label>
-  <input id="password" name="password" type="password" required autocomplete="new-password">
-  <label for="password_confirm">Type the login passphrase again</label>
-  <input id="password_confirm" name="password_confirm" type="password" required autocomplete="new-password">
-  <button type="submit" class="primary">Create owner</button>
-</form>
+<section class="card narrow">
+  <div class="center">
+    <div class="badge-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+    <h1>Create the first owner</h1>
+    <p class="lead">The vault is open, but nobody has an account yet. Set one up to keep going.</p>
+  </div>
+  <form class="stack" method="post" action="/provision" autocomplete="off">
+    <div class="field">
+      <label for="label">Display name
+        <span class="tip"><span class="q" tabindex="0" role="button" aria-label="More about this field" aria-describedby="t-label">?</span><span class="body" id="t-label" role="tooltip">A short, neutral name shown on the backups page, such as "alice". It appears in alerts too, so avoid anything private.</span></span>
+      </label>
+      <input id="label" name="label" type="text" required>
+      <div class="hint">Keep it neutral. It can show up in notifications.</div>
+    </div>
+    <div class="field">
+      <label for="username">Login username</label>
+      <input id="username" name="username" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="password">Login passphrase
+        <span class="tip"><span class="q" tabindex="0" role="button" aria-label="More about this field" aria-describedby="t-login">?</span><span class="body" id="t-login" role="tooltip">This is for signing in to the web page. It must be different from the vault passphrase you just used to unlock.</span></span>
+      </label>
+      <input id="password" name="password" type="password" required autocomplete="new-password">
+      <div class="hint">Use something different from the vault passphrase.</div>
+    </div>
+    <div class="field">
+      <label for="password_confirm">Type the login passphrase again</label>
+      <input id="password_confirm" name="password_confirm" type="password" required autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn primary block">Create owner</button>
+  </form>
+</section>
 {{else}}
-<p>The vault is unlocked. Sign in as an owner:</p>
-<form method="post" action="/login" autocomplete="off">
-  <label for="username">Username</label>
-  <input id="username" name="username" type="text" required autofocus autocomplete="username">
-  <label for="password">Passphrase</label>
-  <input id="password" name="password" type="password" required autocomplete="current-password">
-  <button type="submit" class="primary">Sign in</button>
-</form>
+<section class="card narrow">
+  <div class="center">
+    <div class="badge-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+    <h1>Sign in</h1>
+    <p class="lead">The vault is unlocked. Sign in to see your backups.</p>
+  </div>
+  <form class="stack" method="post" action="/login" autocomplete="off">
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" required autofocus autocomplete="username" autocapitalize="none" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="password">Passphrase</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn primary block">Sign in</button>
+  </form>
+</section>
 {{end}}
 {{end}}
