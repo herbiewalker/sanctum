@@ -4,9 +4,13 @@ All notable changes to Sanctum are recorded here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versioning: [SemVer](https://semver.org/).
 
 > The version is **never** hand-written into a tag. The tag is the last step of a release script
-> (principle 6 / lesson L1). Until the first release, everything lives under Unreleased.
+> (principle 6 / lesson L1), `scripts/release.sh`.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-11-11
+
+First release: everything below was built before it. Image `ghcr.io/herbiewalker/sanctum:0.1.0` and `:stable`.
 
 ### Security — Go 1.26.11 (2026-11-11)
 - Go toolchain 1.26.10 -> 1.26.11 (`go.mod`, `SETUP.md`) and the Dockerfile builder image re-pinned by
@@ -412,12 +416,12 @@ network / injection / build / a11y). Final verdict: **GO** for M6.
 ### Known gaps
 > Recorded rather than implied. Principle 11: a green build is a low rung on the ladder.
 
-- The image builds but has **never been run**. Deployment is M6.
-- **Graceful shutdown is unverified**; Git Bash cannot deliver a real SIGTERM to a Windows binary
-  (it terminates at exit 143 without running the handler), and CI builds without running. Needs
-  `docker stop` on a real host — OL-7.
-- `guard-no-plaintext` reports **SKIP**, not OK — there is no ingest path to check before M3.
-- The compose healthcheck calls `sanctum -healthcheck`, a flag that does not exist yet.
-- Nothing can read a `TRYSTBK1` file yet. The primitive is proven; the reader is M1.
-- Wire-compatibility with the app is **unproven** until a genuine `.tryst` file opens — residual
-  risk R6, OL-8.
+- **Tested on one host only** (one Unraid server, one user's data). The live smoke checks
+  (`scripts/smoke-live.sh`: tmpfs refusal, oversize upload, tampered manifest, KDF floor, kill-and-restart)
+  all passed there on 2026-11-11; nobody else has run it.
+- **No independent security review.** Eight self-run audit passes, not an external one.
+- **The smoke script's memory sampler read 0 MiB** on that host, so "memory stays flat" during the
+  oversize upload is inferred from the instant 413, not measured (D15, to fix in a patch release).
+- Audit nits D10 to D14 are open for a patch release (see `docs/AUDIT.md`).
+- Plain HTTP, LAN only (D-12). Go may keep copies of the runtime key in memory after it is zeroed.
+- An unattended reboot leaves the vault locked and not ingesting; the staleness alert is what catches it.

@@ -15,7 +15,7 @@ storage, retention, staleness and locked-too-long alerts (ntfy, Discord, Slack o
 byte-identical restore, and an opt-in update check. It has been deployed on **one** Unraid host and
 smoke-tested there (tmpfs refusal, oversize upload, tampered manifest, KDF floor,
 graceful shutdown), and a real 419 MB Tryst backup was ingested, restored byte-identical and opened
-in Tryst. It has **not** been run by anyone else, there is **no published release yet**, and it has
+in Tryst. It has **not** been run by anyone else, **v0.1.0 is the first release**, and it has
 had one author's review plus eight self-run audit passes (see [docs/AUDIT.md](docs/AUDIT.md)), not an
 independent one. Treat it as a careful hobby project, not audited security software.
 
