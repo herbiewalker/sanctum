@@ -175,6 +175,8 @@ func (s *Server) Routes() *http.ServeMux {
 
 	// Always-available.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
+	mux.HandleFunc("GET /app.js", s.handleAppJS)
+	mux.HandleFunc("POST /theme", s.handleTheme)
 
 	// The landing page: chooses unlock vs login vs dashboard.
 	mux.HandleFunc("GET /", s.handleRoot)
@@ -227,6 +229,11 @@ type viewData struct {
 	// Warn is a plain-language warning shown above the page (vault locked for
 	// a long time, backup is stale). Contains no secret material.
 	Warn string
+
+	// Theme is "auto" (follow the system), "light" or "dark"; Next is the page the
+	// theme buttons return to.
+	Theme string
+	Next  string
 }
 
 // bodyFor maps a "page name" to its dispatched block. Kept centralised so
@@ -239,7 +246,9 @@ var bodyFor = map[string]string{
 	"passwords.html": "body_passwords",
 }
 
-func (s *Server) render(w http.ResponseWriter, name string, data viewData) {
+func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, data viewData) {
+	data.Theme = themeFrom(r)
+	data.Next = nextFor(name)
 	data.Body = bodyFor[name]
 	if name == "unlock.html" {
 		data.FirstRun = s.firstRun()
@@ -259,9 +268,9 @@ func (s *Server) render(w http.ResponseWriter, name string, data viewData) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	// No script, no external assets, no framing: the pages need only inline CSS.
+	// Only our own small script (progress bar) may run; no external assets, no framing.
 	w.Header().Set("Content-Security-Policy",
-		"default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+		"default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	if err := s.tmpl.ExecuteTemplate(w, "layout", data); err != nil {
 		s.logger.Error("template render", "page", name, "err", err.Error())
 	}
@@ -287,7 +296,7 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 // handleRoot picks the right view based on state.
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if !s.vault.IsUnlocked() {
-		s.render(w, "unlock.html", viewData{Unlocked: false})
+		s.render(w, r, "unlock.html", viewData{Unlocked: false})
 		return
 	}
 	sess, _ := s.currentSession(r)
@@ -295,7 +304,7 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		// Unlocked but not logged in. Show the login form; if no owners
 		// exist yet, offer the first-run provisioning form instead.
 		needsProv, _ := s.noOwnersYet()
-		s.render(w, "login.html", viewData{Unlocked: true, NeedsProvision: needsProv})
+		s.render(w, r, "login.html", viewData{Unlocked: true, NeedsProvision: needsProv})
 		return
 	}
 	http.Redirect(w, r, "/status", http.StatusSeeOther)
@@ -306,7 +315,7 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUnlock(w http.ResponseWriter, r *http.Request) {
 	if !s.unlockLimit.Allow(clientIP(r)) {
 		s.logger.Warn("unlock rate-limited", "ip", clientIP(r))
-		s.render(w, "unlock.html", viewData{
+		s.render(w, r, "unlock.html", viewData{
 			Unlocked: false,
 			Error:    "Too many attempts. Wait a minute before trying again.",
 		})
@@ -318,13 +327,13 @@ func (s *Server) handleUnlock(w http.ResponseWriter, r *http.Request) {
 	}
 	pw := r.PostForm.Get("passphrase")
 	if pw == "" {
-		s.render(w, "unlock.html", viewData{Unlocked: false, Error: "Passphrase required."})
+		s.render(w, r, "unlock.html", viewData{Unlocked: false, Error: "Passphrase required."})
 		return
 	}
 	// Brand-new vault: this passphrase will become the one that protects
 	// everything, so make the operator type it twice. A mismatch creates nothing.
 	if s.firstRun() && r.PostForm.Get("passphrase_confirm") != pw {
-		s.render(w, "unlock.html", viewData{
+		s.render(w, r, "unlock.html", viewData{
 			Unlocked: false,
 			Error:    "The two passphrases do not match. Nothing was created; try again.",
 		})
@@ -332,7 +341,7 @@ func (s *Server) handleUnlock(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.vault.Unlock(pw); err != nil {
 		s.logger.Warn("vault unlock failed", "ip", clientIP(r), "err", err.Error())
-		s.render(w, "unlock.html", viewData{
+		s.render(w, r, "unlock.html", viewData{
 			Unlocked: false,
 			Error:    "Unlock failed — wrong passphrase, or the seal is corrupted.",
 		})
@@ -381,13 +390,13 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(r.PostForm.Get("username"))
 	password := r.PostForm.Get("password")
 	if label == "" || username == "" || password == "" {
-		s.render(w, "login.html", viewData{
+		s.render(w, r, "login.html", viewData{
 			Unlocked: true, NeedsProvision: true, Error: "All fields are required.",
 		})
 		return
 	}
 	if password != r.PostForm.Get("password_confirm") {
-		s.render(w, "login.html", viewData{
+		s.render(w, r, "login.html", viewData{
 			Unlocked: true, NeedsProvision: true, Error: "The two login passphrases do not match.",
 		})
 		return
@@ -405,7 +414,7 @@ func (s *Server) handleProvision(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		s.logger.Error("provision owner", "err", err.Error())
-		s.render(w, "login.html", viewData{
+		s.render(w, r, "login.html", viewData{
 			Unlocked: true, NeedsProvision: true,
 			Error: "Could not create owner (username may already be in use).",
 		})
@@ -427,7 +436,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.loginLimit.Allow(clientIP(r)) {
-		s.render(w, "login.html", viewData{
+		s.render(w, r, "login.html", viewData{
 			Unlocked: true, Error: "Too many attempts. Wait a moment before retrying.",
 		})
 		return
@@ -439,7 +448,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(r.PostForm.Get("username"))
 	password := r.PostForm.Get("password")
 	if username == "" || password == "" {
-		s.render(w, "login.html", viewData{Unlocked: true, Error: "Username and passphrase required."})
+		s.render(w, r, "login.html", viewData{Unlocked: true, Error: "Username and passphrase required."})
 		return
 	}
 
@@ -458,7 +467,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	got := pbkdf2.Key([]byte(password), auth.Salt, auth.Iterations, len(auth.Hash), sha256.New)
 	ok := subtle.ConstantTimeCompare(got, auth.Hash) == 1
 	if !found || !ok {
-		s.render(w, "login.html", viewData{Unlocked: true, Error: "Invalid credentials."})
+		s.render(w, r, "login.html", viewData{Unlocked: true, Error: "Invalid credentials."})
 		return
 	}
 
@@ -491,7 +500,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}
-	s.render(w, "status.html", viewData{
+	s.render(w, r, "status.html", viewData{
 		Unlocked: true, Authed: true, Status: view,
 	})
 }
@@ -552,14 +561,14 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		}
 		s.logger.Warn("upload ingest failed", "owner", sess.OwnerID, "err", err.Error())
 		view, _ := s.buildStatusView(sess.OwnerID)
-		s.render(w, "status.html", viewData{
+		s.render(w, r, "status.html", viewData{
 			Unlocked: true, Authed: true, Status: view,
 			Error: "Ingest failed: " + humanizeIngestErr(err),
 		})
 		return
 	}
 	view, _ := s.buildStatusView(sess.OwnerID)
-	s.render(w, "status.html", viewData{
+	s.render(w, r, "status.html", viewData{
 		Unlocked: true, Authed: true, Status: view,
 		Flash: fmt.Sprintf("Ingested %s (%d bytes, %d tables).",
 			shortHash(res.SHA256), res.SizeBytes, len(res.TableCounts)),
@@ -642,7 +651,7 @@ func (s *Server) handlePasswords(w http.ResponseWriter, r *http.Request) {
 		}
 		rows = append(rows, row)
 	}
-	s.render(w, "passwords.html", viewData{
+	s.render(w, r, "passwords.html", viewData{
 		Unlocked: true, Authed: true, Passwords: rows,
 	})
 }

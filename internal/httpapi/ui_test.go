@@ -2,6 +2,9 @@ package httpapi
 
 import (
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -22,8 +25,8 @@ func TestUITemplatesAreScriptFreeAndSelfContained(t *testing.T) {
 			return rerr
 		}
 		s := string(b)
-		if strings.Contains(strings.ToLower(s), "<script") {
-			t.Errorf("%s contains <script>", p)
+		if strings.Count(strings.ToLower(s), "<script") > strings.Count(s, `<script src="/app.js" defer></script>`) {
+			t.Errorf("%s has a script other than /app.js", p)
 		}
 		if handler.MatchString(s) {
 			t.Errorf("%s has an inline event handler", p)
@@ -47,8 +50,8 @@ func TestUISendsStrictCSP(t *testing.T) {
 			t.Errorf("CSP %q is missing %q", csp, want)
 		}
 	}
-	if strings.Contains(csp, "script-src") || strings.Contains(csp, "'unsafe-eval'") {
-		t.Errorf("CSP must not allow scripts: %q", csp)
+	if !strings.Contains(csp, "script-src 'self';") || strings.Contains(csp, "unsafe-eval") || strings.Contains(csp, "script-src 'unsafe-inline") {
+		t.Errorf("CSP must allow only our own script: %q", csp)
 	}
 }
 
@@ -60,6 +63,53 @@ func TestUILayoutIsResponsiveAndAccessible(t *testing.T) {
 	for _, want := range []string{`name="viewport"`, `width=device-width`, `class="skip"`, `lang="en"`, `prefers-color-scheme: dark`} {
 		if !strings.Contains(html, want) {
 			t.Errorf("page is missing %q", want)
+		}
+	}
+}
+
+func TestThemeDefaultsToSystemAndCanBeChosen(t *testing.T) {
+	e := newE2E(t)
+	html := do(t, e, "GET", "/", nil, nil).Body.String()
+	if strings.Contains(html, `<html lang="en" data-theme`) {
+		t.Error("default must follow the system: no data-theme attribute")
+	}
+	rec := do(t, e, "POST", "/theme", url.Values{"theme": {"dark"}, "next": {"/status"}}, nil)
+	if rec.Code != 303 || rec.Header().Get("Location") != "/status" {
+		t.Fatalf("theme post: %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+	var ck *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == themeCookie {
+			ck = c
+		}
+	}
+	if ck == nil || ck.Value != "dark" {
+		t.Fatalf("cookie not set: %+v", ck)
+	}
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(ck)
+	w := httptest.NewRecorder()
+	e.mux.ServeHTTP(w, req)
+	if !strings.Contains(w.Body.String(), `<html lang="en" data-theme="dark">`) {
+		t.Error("saved dark theme not applied")
+	}
+	// An open redirect target is ignored.
+	rec = do(t, e, "POST", "/theme", url.Values{"theme": {"auto"}, "next": {"https://evil.example"}}, nil)
+	if rec.Header().Get("Location") != "/" {
+		t.Errorf("redirect not pinned: %q", rec.Header().Get("Location"))
+	}
+}
+
+func TestAppJSServedAndUploadFormHasProgress(t *testing.T) {
+	e := newE2E(t)
+	rec := do(t, e, "GET", "/app.js", nil, nil)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "XMLHttpRequest") {
+		t.Fatalf("app.js: %d", rec.Code)
+	}
+	b, _ := fs.ReadFile(templatesFS, "templates/status.html")
+	for _, want := range []string{"data-upload", `id="progbar"`} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("status.html missing %s", want)
 		}
 	}
 }

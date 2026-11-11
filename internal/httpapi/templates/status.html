@@ -13,15 +13,21 @@
 <section class="card">
   <h2>Add a backup</h2>
   <p class="muted small flush">Choose a <code>.tryst</code> file exported from Tryst. Sanctum checks that it opens before keeping it.</p>
-  <form class="stack" method="post" action="/upload" enctype="multipart/form-data">
+  <form class="stack" method="post" action="/upload" enctype="multipart/form-data" data-upload>
     <div class="field">
       <label for="file">Backup file
-        <span class="tip"><span class="q" tabindex="0" role="button" aria-label="More about uploading" aria-describedby="t-up">?</span><span class="body" id="t-up" role="tooltip">The file is checked by opening it with your saved passwords. A file that was already added is refused straight away. Large files can take a few minutes with no progress bar, so please wait.</span></span>
+        <span class="tip"><span class="q" tabindex="0" role="button" aria-label="More about uploading" aria-describedby="t-up">?</span><span class="body" id="t-up" role="tooltip">The file is checked by opening it with your saved passwords. A file that was already added is refused straight away. Large files can take a few minutes. A progress bar shows while it uploads, then while it is checked.</span></span>
       </label>
       <input id="file" name="file" type="file" accept=".tryst" required>
       <div class="hint">Prefer not to use the browser? Drop the file in the inbox folder on the server and Sanctum picks it up.</div>
     </div>
     <div><button type="submit" class="btn primary">Upload and check</button></div>
+    <div class="prog" id="prog" hidden>
+      <progress id="progbar" max="100" aria-labelledby="progtxt"></progress>
+      <p class="ptxt" id="progtxt" role="status" aria-live="polite"></p>
+      <button type="button" class="btn sm" id="progcancel">Cancel upload</button>
+    </div>
+    <div class="note err" id="progerr" role="alert" hidden></div>
   </form>
 </section>
 

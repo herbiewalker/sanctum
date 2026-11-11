@@ -687,7 +687,7 @@ that carries these changes and a throwaway tag has exercised `release.yml`.** D1
 ### Post-audit change: web UI redesign and Content-Security-Policy (v0.1.1)
 > Un-audited by a dedicated pass (principle 9). The surface is small and tested, but it is new since Pass 008.
 
-- All five page templates were rewritten (HTML and inline CSS only; no script, no inline event handler, no
+- All five page templates were rewritten (HTML and inline CSS only; one external same-origin script (upload progress), no inline script or event handler, no
   external resource). `TestUITemplatesAreScriptFreeAndSelfContained` enforces that.
 - New response header on every page: `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline';
   img-src data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'` (`TestUISendsStrictCSP`).
